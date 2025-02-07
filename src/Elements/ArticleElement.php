@@ -52,10 +52,14 @@ class ArticleElement implements ListenerInterface
             $doc = new \DOMDocument();
             $doc->loadXML($article->contents);
             $body = $doc->getElementsByTagName('section')->item(0);
+            $body->setAttribute("data-article-id", $article->id);
             $event->output->appendChild($event->output->ownerDocument->importNode($body, true));
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
+            // Selectively regenerate the article 
             if (ZOLINGA_DEBUG && isset($_REQUEST['regenerate'])) {
-                $this->generateArticle($uuid, $backend, $model, $prompt);
+                if (intval($_REQUEST['regenerate'] ?: 0) == $article->id) {
+                    $this->generateArticle($uuid, $backend, $model, $prompt);
+                }
             }
         } else {
             $errorMsgElement = $event->output->appendChild($event->output->ownerDocument->createElement("section"));
