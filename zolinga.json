@@ -1,0 +1,73 @@
+{
+  "name": "Zolinga AI",
+  "version": "1.0",
+  "description": "AI power tools and services.",
+  "authors": [
+    "Daniel Sevcik <danny@zolinga.net>"
+  ],
+
+  "attributes": {},
+
+  "listen": [
+    {
+      "description": "AI service.",
+      "service": "ai",
+      "class": "\\Zolinga\\AI\\Service\\AiApi",
+      "origin": [
+        "internal"
+      ]
+    },
+    {
+      "description": "CMS page menu.",
+      "event": "cms:content:ai-article",
+      "class": "\\Zolinga\\AI\\Elements\\ArticleElement",
+      "method": "onArticleElement",
+      "origin": [
+        "internal"
+      ]
+    },
+    {
+      "description": "CLI command to query backends and process AI prompt requests.",
+      "event": "ai:generate",
+      "class": "\\Zolinga\\AI\\Service\\AiGenerator",
+      "method": "onGenerate",
+      "origin": [
+        "cli"
+      ]
+    },
+    {
+      "description": "Save AI output as an article.",
+      "event": "ai:article:generated",
+      "class": "\\Zolinga\\AI\\Elements\\ArticleElement",
+      "method": "onGenerateArticle",
+      "origin": [
+        "internal"
+      ]
+    }
+  ],
+
+  "emit": [
+  ],
+
+  "webComponents": [
+  ],
+
+  "autoload": {
+    "Zolinga\\AI\\": "src/"
+  },
+
+  "dependencies": [
+    "zolinga-db"
+  ],
+
+  "config": {
+    "ai": {
+      "backends": {
+        "default": {
+          "type": "ollama",
+          "uri": "http://login:password@127.0.0.1:3000/"
+        }
+      }
+    }
+  }
+}
