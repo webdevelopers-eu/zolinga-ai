@@ -102,7 +102,7 @@ class ArticleModel
         $doc->loadHTML("<!DOCTYPE html>\n<html>
             <head><meta charset=\"utf-8\"></head>
             <body>
-                <section class=\"zolinga-article\" data-article-id=\"{$article->id}\">\n" . $contents . "</section>
+                <section class=\"zolinga-article\" data-article-id=\"{$this->id}\">\n" . $contents . "</section>
             </body></html>",  LIBXML_NOERROR | LIBXML_NONET | LIBXML_NOWARNING);
         $contents = $doc->saveXML();
 
