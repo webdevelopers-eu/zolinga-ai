@@ -10,7 +10,7 @@ Zolinga AI is a module providing AI features for the [Zolinga](https://github.co
 
 ## Usage
 
-1. Configure the AI backends in your Zolinga configuration:
+1. Configure the AI backends in your Zolinga configuration. It supports [Ollama backend API](https://ollama.com/download).
    ```json
    {
        "config": {
