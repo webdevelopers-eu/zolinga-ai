@@ -54,7 +54,7 @@ class ArticleElement implements ListenerInterface
             $body = $doc->getElementsByTagName('section')->item(0);
             $event->output->appendChild($event->output->ownerDocument->importNode($body, true));
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
-            if (isset($_REQUEST['regenerate'])) {
+            if (ZOLINGA_DEBUG && isset($_REQUEST['regenerate'])) {
                 $this->generateArticle($uuid, $backend, $model, $prompt);
             }
         } else {
