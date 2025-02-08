@@ -2,6 +2,8 @@
 
 namespace Zolinga\AI\Service;
 
+use DOMDocument;
+use Parsedown;
 use Zolinga\AI\Enum\AiBackendEnum;
 use Zolinga\AI\Events\PromptEvent;
 use Zolinga\System\Events\ServiceInterface;
@@ -118,6 +120,9 @@ class AiApi implements ServiceInterface
     {
         global $api;
 
+        if (!isset($api->config['ai']['backends'][$backend])) {
+            throw new \Exception("Unknown AI backend: $backend, check that the configuration key .ai.backends.$backend exists in your Zolinga configuration.", 1222);
+        }
         $uri = $api->config['ai']['backends'][$backend]['uri'];
         $url = rtrim($uri, '/') . '/api/chat';
         $urlSafe = parse_url($url, PHP_URL_SCHEME) . '://' . parse_url($url, PHP_URL_HOST);
@@ -138,7 +143,7 @@ class AiApi implements ServiceInterface
         }
        
         $timer = microtime(true);
-        $api->log->info('ai', "Ollama request to $urlSafe using model {$model} .");
+        $api->log->info('ai', "Ollama request to $urlSafe using model {$model}: ".substr($prompt, 0, 100)."...");
         $response = file_get_contents($url, false, stream_context_create([
             'http' => [
                 'method' => 'POST',
@@ -149,7 +154,7 @@ class AiApi implements ServiceInterface
                 "Accept: application/json\r\n" .
                 "Accept-Charset: utf-8\r\n",
                 'content' => json_encode($request, JSON_UNESCAPED_UNICODE),
-                'timeout' => 600, // 10 minutes
+                'timeout' => 1800, // 30 minutes
             ],
         ]));
         $api->log->info('ai', "Ollama request took " . round(microtime(true) - $timer, 2) . "s.");
@@ -164,5 +169,36 @@ class AiApi implements ServiceInterface
         }
 
         return $answer;
+    }
+
+    /**
+     * Converts the markdown text to DOM.
+     *
+     * @param string $markdown
+     * @return DOMDocument
+     */
+    public function convertMarkdownToDOM(string $markdown): DOMDocument
+    {
+        
+        $parser = new Parsedown();
+        $contents = $parser->text($markdown);
+
+        // to XML
+        $doc = new \DOMDocument("1.0", "UTF-8");
+        $doc->formatOutput = false;
+        $doc->substituteEntities = false;
+        $doc->strictErrorChecking = false;
+        $doc->recover = true;
+        $doc->resolveExternals = false;
+        $doc->validateOnParse = false;
+        $doc->xmlStandalone = true;
+        $doc->loadHTML("<!DOCTYPE html>
+            <html>
+            <head><meta charset=\"utf-8\"></head>
+            <body>
+                <section>" . $contents . "</section>
+            </body>
+            </html>",  LIBXML_NOERROR | LIBXML_NONET | LIBXML_NOWARNING);
+        return $doc;
     }
 }

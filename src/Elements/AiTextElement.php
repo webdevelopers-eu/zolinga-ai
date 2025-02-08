@@ -47,11 +47,14 @@ class AiTextElement implements ListenerInterface
             $uuid = 'ai:article:' . substr(sha1($fingerprint), 0, 12);
         }
 
-        $article = AiTextModel::getArticle($uuid);
+        $article = AiTextModel::getTextModel($uuid);
         if ($article) {
             $doc = new \DOMDocument();
             $doc->loadXML($article->contents);
             $body = $doc->getElementsByTagName('section')->item(0);
+            if (!$body instanceof \DOMElement) {
+                throw new \Exception("Invalid article format: $article");
+            }
             $body->setAttribute("data-text-id", $article->id);
             $event->output->appendChild($event->output->ownerDocument->importNode($body, true));
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
@@ -121,7 +124,7 @@ class AiTextElement implements ListenerInterface
         $uuid = $event->uuid;
         $contents = $event->response['data'];
 
-        $article = AiTextModel::getArticle($uuid) ?: AiTextModel::createArticle($uuid, $contents);
+        $article = AiTextModel::getTextModel($uuid) ?: AiTextModel::createTextModel($uuid, $contents);
         $article->contents = $contents;
         $article->save();
 

@@ -3,6 +3,7 @@
 namespace Zolinga\AI\Model;
 
 use Parsedown;
+use PhpParser\Node\Expr\Cast\String_;
 use Zolinga\AI\Enum\ResponseTextFormat;
 
 /**
@@ -10,7 +11,7 @@ use Zolinga\AI\Enum\ResponseTextFormat;
  * 
  * Usage:
  * 
- * $article = AiTextModel::getArticle($uuid) ?? AiTextModel::createArticle($uuid, $contents);
+ * $article = AiTextModel::getTextModel($uuid) ?? AiTextModel::createTextModel($uuid, $contents);
  * $article->contents = "<h1>My new article</h1>";
  * $article->save();
  * 
@@ -43,8 +44,8 @@ class AiTextModel
     /**
      * Creates a new AI article model.
      * 
-     * To create a new article use AiTextModel::createArticle() method.
-     * To get an existing article use AiTextModel::getArticle() method.
+     * To create a new article use AiTextModel::createTextModel() method.
+     * To get an existing article use AiTextModel::getTextModel() method.
      *
      * @param array $rowData The row data from the database.
      */
@@ -83,28 +84,16 @@ class AiTextModel
      * @return void
      */
     public function setContents(string $contents, ResponseTextFormat $format = ResponseTextFormat::MARKDOWN) {
+        global $api;
+
         $contents = trim(preg_replace('/<think>.*?<\/think>/s', '', $contents));
 
-        if ($format === ResponseTextFormat::MARKDOWN) {
-            $parser = new Parsedown();
-            $contents = $parser->text($contents);
-        }
-
-        // to XML
-        $doc = new \DOMDocument("1.0", "UTF-8");
-        $doc->formatOutput = false;
-        $doc->substituteEntities = false;
-        $doc->strictErrorChecking = false;
-        $doc->recover = true;
-        $doc->resolveExternals = false;
-        $doc->validateOnParse = false;
-        $doc->xmlStandalone = true;
-        $doc->loadHTML("<!DOCTYPE html>\n<html>
-            <head><meta charset=\"utf-8\"></head>
-            <body>
-                <section class=\"zolinga-text\" data-text-id=\"{$this->id}\">\n" . $contents . "</section>
-            </body></html>",  LIBXML_NOERROR | LIBXML_NONET | LIBXML_NOWARNING);
-        $contents = $doc->saveXML();
+        // if ($format === ResponseTextFormat::MARKDOWN) { -- for now we support only MARKDOWN
+        $doc = $api->ai->convertMarkdownToDOM($contents);
+        $sectionElement = $doc->getElementsByTagName('section')->item(0);
+        $sectionElement->setAttribute('class', 'zolinga-text');
+        $sectionElement->setAttribute('data-text-id', $this->id);
+        $contents = $doc->saveXML();  
 
         $this->contents = $contents;
     }
@@ -127,7 +116,7 @@ class AiTextModel
      * @param string $contents The contents of the article.
      * @return AiTextModel The created article.
      */
-    static public function createArticle(string $uuid, string $contents): AiTextModel
+    static public function createTextModel(string $uuid, string $contents): AiTextModel
     {
         global $api;
 
@@ -136,7 +125,7 @@ class AiTextModel
             throw new \Exception("Failed to insert AI article into database.", 1225);
         }
 
-        return self::getArticle($uuid);
+        return self::getTextModel($uuid);
     }
 
     /**
@@ -145,7 +134,7 @@ class AiTextModel
      * @param string $uuid The UUID of the article.
      * @return AiTextModel|null The article or null if not found.
      */
-    static public function getArticle(string $uuid): ?AiTextModel
+    static public function getTextModel(string $uuid): ?AiTextModel
     {
         global $api;
 
@@ -155,5 +144,10 @@ class AiTextModel
         }
 
         return new AiTextModel($articleData);
+    }
+
+    public function __toString(): string 
+    {
+        return __CLASS__ . "[$this->id, $this->uuid]";
     }
 }
