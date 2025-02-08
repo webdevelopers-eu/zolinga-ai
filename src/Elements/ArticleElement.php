@@ -4,7 +4,7 @@ namespace Zolinga\AI\Elements;
 
 use Parsedown;
 use Zolinga\AI\Events\PromptEvent;
-use Zolinga\AI\Model\ArticleModel;
+use Zolinga\AI\Model\AiTextModel;
 use Zolinga\Cms\Events\ContentElementEvent;
 use Zolinga\System\Events\ListenerInterface;
 use Zolinga\System\Types\OriginEnum;
@@ -47,12 +47,12 @@ class ArticleElement implements ListenerInterface
             $uuid = 'ai:article:' . substr(sha1($fingerprint), 0, 12);
         }
 
-        $article = ArticleModel::getArticle($uuid);
+        $article = AiTextModel::getArticle($uuid);
         if ($article) {
             $doc = new \DOMDocument();
             $doc->loadXML($article->contents);
             $body = $doc->getElementsByTagName('section')->item(0);
-            $body->setAttribute("data-article-id", $article->id);
+            $body->setAttribute("data-text-id", $article->id);
             $event->output->appendChild($event->output->ownerDocument->importNode($body, true));
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
             // Selectively regenerate the article 
@@ -63,8 +63,8 @@ class ArticleElement implements ListenerInterface
             }
         } else {
             $errorMsgElement = $event->output->appendChild($event->output->ownerDocument->createElement("section"));
-            $errorMsgElement->setAttribute("data-article-id", "");
-            $errorMsgElement->setAttribute("class", "zolinga-article warning");
+            $errorMsgElement->setAttribute("data-text-id", "");
+            $errorMsgElement->setAttribute("class", "zolinga-text warning");
             $errorMsgElement->appendChild(new \DOMText(dgettext("zolinga-ai", "⚠️ The server is busy. Please try again later.")));
             $this->generateArticle($uuid, $backend, $model, $prompt);
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found.");
@@ -121,7 +121,7 @@ class ArticleElement implements ListenerInterface
         $uuid = $event->uuid;
         $contents = $event->response['data']['message']['content'];
 
-        $article = ArticleModel::getArticle($uuid) ?: ArticleModel::createArticle($uuid, $contents);
+        $article = AiTextModel::getArticle($uuid) ?: AiTextModel::createArticle($uuid, $contents);
         $article->contents = $contents;
         $article->save();
 

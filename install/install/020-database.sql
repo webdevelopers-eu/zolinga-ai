@@ -1,4 +1,4 @@
-CREATE TABLE `aiArticles` (
+CREATE TABLE `aiTexts` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `uuid` varchar(128) NOT NULL,
   `uuidHash` binary(20) NOT NULL,
