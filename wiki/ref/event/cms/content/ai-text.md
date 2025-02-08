@@ -1,15 +1,15 @@
 ## Syntax
 
 ```html
-<ai-article model="{MODEL}" [backend="{SOURCE}"] [uuid="{UUID}"]>{PROMPT}</ai-article>
+<ai-text model="{MODEL}" [backend="{SOURCE}"] [uuid="{UUID}"]>{PROMPT}</ai-text>
 ```
 
 Example:
 
 ```html
-<ai-article model="deepseek-r1:8b" backend="default">
+<ai-text model="deepseek-r1:8b" backend="default">
     Write a blog post about the Zolinga platform.
-</ai-article>
+</ai-text>
 ```
 
 ## Attributes
@@ -44,7 +44,7 @@ Currently only Ollama backend API is supported. The example of the configuration
 
 ## Processing
 
-The first time the `<ai-article>` element is rendered, the system queues request for backend to generate the article. In the meantime the element will display an error messsage that the server is busy and the user should try again later. Once the article is generated, the element will display the article content. 
+The first time the `<ai-text>` element is rendered, the system queues request for backend to generate the article. In the meantime the element will display an error messsage that the server is busy and the user should try again later. Once the article is generated, the element will display the article content. 
 
 In order to generate the article on the background run the `./bin/zolinga ai:generate` command. You can run it regularly from the cron job to process all queued articles. The process will finish all queued articles and exit. Or you can run it with the `--loop` option to run it in the loop continuously.
 

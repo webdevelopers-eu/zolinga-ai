@@ -19,7 +19,7 @@
     },
     {
       "description": "CMS page menu.",
-      "event": "cms:content:ai-article",
+      "event": "cms:content:ai-text",
       "class": "\\Zolinga\\AI\\Elements\\ArticleElement",
       "method": "onArticleElement",
       "origin": [

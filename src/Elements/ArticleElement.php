@@ -12,7 +12,7 @@ use Zolinga\System\Types\OriginEnum;
 /**
  * Processes CMS generative article content. 
  * 
- * Example: <ai-article backend="default" model="my-model">Hello, how are you?</ai-article>
+ * Example: <ai-text backend="default" model="my-model">Hello, how are you?</ai-text>
  * 
  * @author Daniel Sevcik <sevcik@webdevelopers.eu>
  * @date 2025-02-07
@@ -22,7 +22,7 @@ class ArticleElement implements ListenerInterface
     public function __construct() {}
 
     /**
-     * This method is called when the <ai-article> element is processed.
+     * This method is called when the <ai-text> element is processed.
      * See more in wiki.
      *
      * @param ContentElementEvent $event
