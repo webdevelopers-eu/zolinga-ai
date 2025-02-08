@@ -1,7 +1,7 @@
 ## Syntax
 
 ```html
-<ai-article model="{MODEL}" [backend="{SOURCE}"]>{PROMPT}</ai-article>
+<ai-article model="{MODEL}" [backend="{SOURCE}"] [uuid="{UUID}"]>{PROMPT}</ai-article>
 ```
 
 Example:
@@ -16,6 +16,7 @@ Example:
 
 - `model`: The model to use for generating the article. The model must be supported by your backend AI service.
 - `backend`: The backend to use for generating the article. The backends are defined in your [configuration](:Zolinga Core:Configuration)'s key. Default: `default`.
+- `uuid`: The UUID of the article. If the UUID is not provided, the system will generate a new UUID hash for the article from the prompt, model, and backend.
 
 ## Backend Configuration
 

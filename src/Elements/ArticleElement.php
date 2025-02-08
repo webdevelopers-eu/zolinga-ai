@@ -39,8 +39,8 @@ class ArticleElement implements ListenerInterface
         // Erase the contents of the element to be safe
         $event->output->nodeValue = "";
 
-        if ($event->input->getAttribute("id")) {
-            $uuid = $event->input->getAttribute("id");
+        if ($event->input->getAttribute("uuid")) {
+            $uuid = $event->input->getAttribute("uuid");
         } else {
             $fingerprint = "$backend:$model::$prompt";
             $fingerprint = preg_replace('/\s+/', ' ', trim($fingerprint));
