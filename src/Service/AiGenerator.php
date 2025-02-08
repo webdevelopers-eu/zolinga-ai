@@ -66,11 +66,14 @@ class AiGenerator implements ListenerInterface
         $eventData = json_decode($row['promptEvent'], true);
         $event = PromptEvent::fromArray($eventData);
 
-        $this->queryOllama($event);
-
-        $event->dispatch();
-
-        $api->db->query("DELETE FROM aiRequests WHERE id = ?", $id);
+        try {
+            $this->queryOllama($id, $event);
+            $event->dispatch();
+            $api->db->query("DELETE FROM aiRequests WHERE id = ?", $id);
+        } catch (\Throwable $e) {
+            $api->log->error('ai', "Error processing request {$id}: {$e->getMessage()}");
+            $api->db->query("UPDATE aiRequests SET status = ? WHERE id = ?", PromptStatusEnum::ERROR, $id);
+        }
     }
 
     /**
@@ -78,11 +81,12 @@ class AiGenerator implements ListenerInterface
      * 
      * Decodes the JSON response and stores it in the event's response data.
      *
+     * @param int $id The ID of the request being processed.
      * @param PromptEvent $event The event containing the request details.
      * @global object $api The global API object containing configuration and logging utilities.
      * @throws JsonException If the JSON decoding of the response fails.
      */
-    private function queryOllama(PromptEvent $event): void
+    private function queryOllama(int $id, PromptEvent $event): void
     {
         global $api;
 
@@ -120,7 +124,7 @@ class AiGenerator implements ListenerInterface
             ],
         ]));
         $api->log->info('ai', "Ollama request {$event->uuid} took " . round(microtime(true) - $timer, 2) . "s.");
-        file_put_contents("private://zolinga-ai/ai-last-response.json", $response);
+        $api->db->query("UPDATE aiRequests SET response = ? WHERE id = ?", $response, $id);
 
         $event->response['data'] = json_decode($response, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
     }
