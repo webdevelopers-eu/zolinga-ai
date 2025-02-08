@@ -2,6 +2,7 @@
 
 namespace Zolinga\AI\Service;
 
+use Zolinga\AI\Enum\AiBackendEnum;
 use Zolinga\AI\Events\PromptEvent;
 use Zolinga\System\Events\ServiceInterface;
 
@@ -55,7 +56,7 @@ class AiApi implements ServiceInterface
     {
         global $api;
 
-        if ($this->isPromptQueued($event->uuid)) {
+        if ($this->isPromptAsyncQueued($event->uuid)) {
             throw new \Exception("The prompt with UUID '{$event->uuid}' is already queued.", 1223);
         }
 
@@ -80,11 +81,61 @@ class AiApi implements ServiceInterface
      * @param string $uuid The UUID of the prompt.
      * @return bool True if the prompt is queued, false otherwise.
      */
-    public function isPromptQueued(string $uuid): bool
+    public function isPromptAsyncQueued(string $uuid): bool
     {
         global $api;
 
         $id = $api->db->query("SELECT id FROM aiRequests WHERE uuidHash = UNHEX(SHA1(?))", $uuid)['id'];
         return $id ? true : false;
+    }
+
+   /**
+    * Sends a request to the AI backend with the provided prompt and model.
+    * 
+    * Decodes the JSON response and stores it in the event's response data.
+    *
+    * IMPORTANT: This is a blocking call and should be used in async context only.
+    *
+    * @param string $backend The backend to use.
+    * @param string $model The model to use.
+    * @param string $prompt The prompt to send.
+    * @return array The response from the AI model.
+    */
+    public function prompt(string $backend, string $model, string $prompt): array
+    {
+        global $api;
+        $uri = $api->config['ai']['backends'][$backend]['uri'];
+        $url = rtrim($uri, '/') . '/api/chat';
+        $urlSafe = parse_url($url, PHP_URL_SCHEME) . '://' . parse_url($url, PHP_URL_HOST);
+        
+        $user = parse_url($uri, PHP_URL_USER);
+        $pass = parse_url($uri, PHP_URL_PASS);
+        
+        $basicAuth = $user && $pass ? base64_encode("$user:$pass") : null;
+        $request = [
+            'model' => $model,
+            'messages' => [['role' => 'user', 'content' => $prompt]],
+            'stream' => false,
+            'options' => ['temperature' => 0],
+        ];
+        
+        $timer = microtime(true);
+        $api->log->info('ai', "Ollama request to $urlSafe using model {$model} .");
+        $response = file_get_contents($url, false, stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' =>
+                "Content-Type: application/json; charset=utf-8\r\n" .
+                ($basicAuth ? "Authorization: Basic $basicAuth\r\n" : '') .
+                "User-Agent: Zolinga/1.0\r\n" .
+                "Accept: application/json\r\n" .
+                "Accept-Charset: utf-8\r\n",
+                'content' => json_encode($request, JSON_UNESCAPED_UNICODE),
+                'timeout' => 600, // 10 minutes
+            ],
+        ]));
+        $api->log->info('ai', "Ollama request took " . round(microtime(true) - $timer, 2) . "s.");
+        
+        return json_decode($response, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
     }
 }

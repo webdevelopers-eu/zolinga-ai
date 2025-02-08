@@ -90,7 +90,7 @@ class ArticleElement implements ListenerInterface
     {
         global $api;
 
-        if ($api->ai->isPromptQueued($uuid)) {
+        if ($api->ai->isPromptAsyncQueued($uuid)) {
             return;
         }
 

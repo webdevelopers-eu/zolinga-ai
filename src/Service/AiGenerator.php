@@ -72,7 +72,7 @@ class AiGenerator implements ListenerInterface
         $event = PromptEvent::fromArray($eventData);
         
         try {
-            $this->queryOllama($id, $event);
+            $this->prompt($id, $event);
             $event->dispatch();
             $api->db->query("DELETE FROM aiRequests WHERE id = ?", $id);
         } catch (\Throwable $e) {
@@ -96,46 +96,16 @@ class AiGenerator implements ListenerInterface
     * @global object $api The global API object containing configuration and logging utilities.
     * @throws JsonException If the JSON decoding of the response fails.
     */
-    private function queryOllama(int $id, PromptEvent $event): void
+    private function prompt(int $id, PromptEvent $event): void
     {
         global $api;
         
-        $type = $api->config['ai']['backends'][$event->request['backend']]['type']; // for now always 'ollama'
-        $uri = $api->config['ai']['backends'][$event->request['backend']]['uri'];
+        $backend = $event->request['backend']; // for now always 'ollama'
         $prompt = $event->request['prompt'];
         $model = $event->request['model'];
-        $url = rtrim($uri, '/') . '/api/chat';
-        $urlSafe = parse_url($url, PHP_URL_SCHEME) . '://' . parse_url($url, PHP_URL_HOST);
-        
-        $user = parse_url($uri, PHP_URL_USER);
-        $pass = parse_url($uri, PHP_URL_PASS);
-        
-        $basicAuth = $user && $pass ? base64_encode("$user:$pass") : null;
-        $request = [
-            'model' => $model,
-            'messages' => [['role' => 'user', 'content' => $prompt]],
-            'stream' => false,
-            'options' => ['temperature' => 0],
-        ];
-        
-        $timer = microtime(true);
-        $api->log->info('ai', "Ollama request {$event->uuid} to $urlSafe using model {$model} .");
-        $response = file_get_contents($url, false, stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' =>
-                "Content-Type: application/json; charset=utf-8\r\n" .
-                ($basicAuth ? "Authorization: Basic $basicAuth\r\n" : '') .
-                "User-Agent: Zolinga/1.0\r\n" .
-                "Accept: application/json\r\n" .
-                "Accept-Charset: utf-8\r\n",
-                'content' => json_encode($request, JSON_UNESCAPED_UNICODE),
-                'timeout' => 600, // 10 minutes
-            ],
-        ]));
-        $api->log->info('ai', "Ollama request {$event->uuid} took " . round(microtime(true) - $timer, 2) . "s.");
-        $api->db->query("UPDATE aiRequests SET response = ? WHERE id = ?", $response, $id);
-        
-        $event->response['data'] = json_decode($response, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+        $response = $api->ai->prompt($backend, $model, $prompt);
+        $api->db->query("UPDATE aiRequests SET response = ? WHERE id = ?", json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), $id);
+        $event->response['data'] = $response;
     }
 }
