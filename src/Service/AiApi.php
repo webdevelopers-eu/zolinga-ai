@@ -154,7 +154,7 @@ class AiApi implements ServiceInterface
                 "Accept: application/json\r\n" .
                 "Accept-Charset: utf-8\r\n",
                 'content' => json_encode($request, JSON_UNESCAPED_UNICODE),
-                'timeout' => 1800, // 30 minutes
+                'timeout' => 3600, // 1 hour
             ],
         ]));
         $api->log->info('ai', "Ollama request took " . round(microtime(true) - $timer, 2) . "s.");
