@@ -50,7 +50,12 @@ class AiGenerator implements ListenerInterface
             $id = $api->db->query("SELECT id FROM aiRequests WHERE status = ? ORDER BY created ASC", PromptStatusEnum::QUEUED)['id'];
             if ($id) {
                 // Try to lock the row by setting the status to 'processing'
-                $count = $api->db->query("UPDATE aiRequests SET status = ? WHERE id = ? AND status = 'queued'", PromptStatusEnum::PROCESSING, $id);
+                $count = $api->db->query(
+                    "UPDATE aiRequests SET status = ?, reqStart = ? WHERE id = ? AND status = 'queued'", 
+                    PromptStatusEnum::PROCESSING, 
+                    time(),
+                    $id
+                );
                 if ($count == 1) {
                     $this->processRequest($id);
                 }
@@ -72,7 +77,12 @@ class AiGenerator implements ListenerInterface
             $api->db->query("DELETE FROM aiRequests WHERE id = ?", $id);
         } catch (\Throwable $e) {
             $api->log->error('ai', "Error processing request {$id}: {$e->getMessage()}, trace {$e->getTraceAsString()}");
-            $api->db->query("UPDATE aiRequests SET status = ? WHERE id = ?", PromptStatusEnum::ERROR, $id);
+            $api->db->query(
+                "UPDATE aiRequests SET status = ?, reqEnd = ? WHERE id = ?", 
+                PromptStatusEnum::ERROR, 
+                time(),
+                $id
+            );
         }
     }
     
