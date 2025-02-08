@@ -17,7 +17,7 @@ use Zolinga\System\Types\OriginEnum;
  * @author Daniel Sevcik <sevcik@webdevelopers.eu>
  * @date 2025-02-07
  */
-class ArticleElement implements ListenerInterface
+class AiTextElement implements ListenerInterface
 {
     public function __construct() {}
 
@@ -28,7 +28,7 @@ class ArticleElement implements ListenerInterface
      * @param ContentElementEvent $event
      * @return void
      */
-    public function onArticleElement(ContentElementEvent $event): void
+    public function onAiTextElement(ContentElementEvent $event): void
     {
         global $api;
 
@@ -119,7 +119,7 @@ class ArticleElement implements ListenerInterface
         global $api;
 
         $uuid = $event->uuid;
-        $contents = $event->response['data']['message']['content'];
+        $contents = $event->response['data'];
 
         $article = AiTextModel::getArticle($uuid) ?: AiTextModel::createArticle($uuid, $contents);
         $article->contents = $contents;

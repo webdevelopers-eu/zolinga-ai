@@ -20,8 +20,8 @@
     {
       "description": "CMS page menu.",
       "event": "cms:content:ai-text",
-      "class": "\\Zolinga\\AI\\Elements\\ArticleElement",
-      "method": "onArticleElement",
+      "class": "\\Zolinga\\AI\\Elements\\AiTextElement",
+      "method": "onAiTextElement",
       "origin": [
         "internal"
       ]
@@ -38,7 +38,7 @@
     {
       "description": "Save AI output as an article.",
       "event": "ai:article:generated",
-      "class": "\\Zolinga\\AI\\Elements\\ArticleElement",
+      "class": "\\Zolinga\\AI\\Elements\\AiTextElement",
       "method": "onGenerateArticle",
       "origin": [
         "internal"

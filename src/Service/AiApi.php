@@ -96,14 +96,28 @@ class AiApi implements ServiceInterface
     *
     * IMPORTANT: This is a blocking call and should be used in async context only.
     *
-    * @param string $backend The backend to use.
+    * Example:
+    * $response = $api->ai->prompt('default', 'deepseek-r1:8b', 'Is the labrador blue? Set `answer` prop to true if yes.', {
+    *     [
+    *       "type" => "object", 
+    *       "properties" => [
+    *           "answer" => ["type" => "boolean"],
+    *           "explanation" => ["type" => "string"]
+    *       ], 
+    *       "required" => ["answer", "explanation"]
+    *     ]
+    * });
+    *
+    * @param string $backend The backend to use as defined in the configuration.
     * @param string $model The model to use.
     * @param string $prompt The prompt to send.
-    * @return array The response from the AI model.
+    * @param array|null $format Expected output format specified as JSON schema or "json" or null. See Oolama API documentation.
+    * @return array|string The response from the AI model - if the $format is set to "json" or JSON schema, the response is decoded array, otherwise it is a string.
     */
-    public function prompt(string $backend, string $model, string $prompt): array
+    public function prompt(string $backend, string $model, string $prompt, ?array $format = null): array|string
     {
         global $api;
+
         $uri = $api->config['ai']['backends'][$backend]['uri'];
         $url = rtrim($uri, '/') . '/api/chat';
         $urlSafe = parse_url($url, PHP_URL_SCHEME) . '://' . parse_url($url, PHP_URL_HOST);
@@ -118,7 +132,11 @@ class AiApi implements ServiceInterface
             'stream' => false,
             'options' => ['temperature' => 0],
         ];
-        
+
+        if ($format !== null) {
+            $request['format'] = $format;
+        }
+       
         $timer = microtime(true);
         $api->log->info('ai', "Ollama request to $urlSafe using model {$model} .");
         $response = file_get_contents($url, false, stream_context_create([
@@ -127,7 +145,7 @@ class AiApi implements ServiceInterface
                 'header' =>
                 "Content-Type: application/json; charset=utf-8\r\n" .
                 ($basicAuth ? "Authorization: Basic $basicAuth\r\n" : '') .
-                "User-Agent: Zolinga/1.0\r\n" .
+                "User-Agent: ZolingaAI/1.0\r\n" .
                 "Accept: application/json\r\n" .
                 "Accept-Charset: utf-8\r\n",
                 'content' => json_encode($request, JSON_UNESCAPED_UNICODE),
@@ -136,6 +154,15 @@ class AiApi implements ServiceInterface
         ]));
         $api->log->info('ai', "Ollama request took " . round(microtime(true) - $timer, 2) . "s.");
         
-        return json_decode($response, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $raw = json_decode($response, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $answer = $raw['message']['content'] 
+            or throw new \Exception("Unexpected answer from the model: $response", 1225);
+
+        if ($format !== null) { // then it is serialized json
+            $answer = json_decode($answer, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)
+                or throw new \Exception("Failed to decode the model response: $answer", 1226);
+        }
+
+        return $answer;
     }
 }
