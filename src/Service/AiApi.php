@@ -119,7 +119,7 @@ class AiApi implements ServiceInterface
         global $api;
 
         if (!is_array($api->config['ai']['backends'][$ai])) {
-            throw new \Exception("Unknown AI backend: $ai, check that the configuration key .ai.backends.$backend exists in your Zolinga configuration.", 1222);
+            throw new \Exception("Unknown AI backend: $ai, check that the configuration key .ai.backends.$ai exists in your Zolinga configuration.", 1222);
         }
         $config = array_merge(
             $api->config['ai']['backends']['default'], 
