@@ -5,7 +5,7 @@ namespace Zolinga\AI\Service;
 use DOMDocument;
 use Parsedown;
 use Zolinga\AI\Enum\AiaiEnum;
-use Zolinga\AI\Events\PromptEvent;
+use Zolinga\AI\Events\AiEvent;
 use Zolinga\System\Events\ServiceInterface;
 
 /**
@@ -29,7 +29,7 @@ class AiApi implements ServiceInterface
      * and the response is set to the event object's $event->response->data property.
      * 
      * Example usage:
-     *  $api->ai->promptAsync(new PromptEvent(
+     *  $api->ai->promptAsync(new AiEvent(
      *      "my-response-process", 
      *      request: [
      *        'ai' => 'default',
@@ -41,19 +41,19 @@ class AiApi implements ServiceInterface
      *      ]
      * ));
      * 
-     * When AI processes the request the PromptEvent will have the response data set in $event->response['data']
+     * When AI processes the request the AiEvent will have the response data set in $event->response['data']
      * and the event will be dispatched. Your listener is expected to listen for the event with the same type
-     * as the one you supplied to the \Zolinga\AI\Events\PromptEvent constructor. 
+     * as the one you supplied to the \Zolinga\AI\Events\AiEvent constructor. 
      * 
      * You can set your own meta data into $event->response, those will be preserved and dispatched with the event.
      *
-     * @param PromptEvent $event The event to handle the AI response.
+     * @param AiEvent $event The event to handle the AI response.
      * @param array $options Optional parameters to customize the prompt.
      * @throws \Exception If the request cannot be processed.
      * 
      * @return string The request ID - technically it returns $event->uuid
      */
-    public function promptAsync(PromptEvent $event): string
+    public function promptAsync(AiEvent $event): string
     {
         global $api;
 
@@ -61,7 +61,7 @@ class AiApi implements ServiceInterface
             throw new \Exception("The prompt with UUID '{$event->uuid}' is already queued.", 1223);
         }
 
-        $lastInsertId = $api->db->query("INSERT INTO aiRequests (created, uuid, uuidHash, promptEvent) VALUES (?, ?, UNHEX(SHA1(?)), ?)",
+        $lastInsertId = $api->db->query("INSERT INTO aiEvents (created, uuid, uuidHash, aiEvent) VALUES (?, ?, UNHEX(SHA1(?)), ?)",
             time(),
             $event->uuid,
             $event->uuid,
@@ -86,7 +86,7 @@ class AiApi implements ServiceInterface
     {
         global $api;
 
-        $id = $api->db->query("SELECT id FROM aiRequests WHERE uuidHash = UNHEX(SHA1(?))", $uuid)['id'];
+        $id = $api->db->query("SELECT id FROM aiEvents WHERE uuidHash = UNHEX(SHA1(?))", $uuid)['id'];
         return $id ? true : false;
     }
 

@@ -5,7 +5,7 @@
 namespace Zolinga\AI\Service;
 
 use Zolinga\AI\Enum\PromptStatusEnum;
-use Zolinga\AI\Events\PromptEvent;
+use Zolinga\AI\Events\AiEvent;
 use Zolinga\System\Events\CliRequestResponseEvent;
 use Zolinga\System\Events\ListenerInterface;
 use Zolinga\System\Events\RequestResponseEvent;
@@ -47,11 +47,11 @@ class AiGenerator implements ListenerInterface
     {
         global $api;
         do {
-            $id = $api->db->query("SELECT id FROM aiRequests WHERE status = ? ORDER BY created ASC", PromptStatusEnum::QUEUED)['id'];
+            $id = $api->db->query("SELECT id FROM aiEvents WHERE status = ? ORDER BY created ASC", PromptStatusEnum::QUEUED)['id'];
             if ($id) {
                 // Try to lock the row by setting the status to 'processing'
                 $count = $api->db->query(
-                    "UPDATE aiRequests SET status = ?, reqStart = ? WHERE id = ? AND status = 'queued'", 
+                    "UPDATE aiEvents SET status = ?, start = ? WHERE id = ? AND status = 'queued'", 
                     PromptStatusEnum::PROCESSING, 
                     time(),
                     $id
@@ -67,18 +67,18 @@ class AiGenerator implements ListenerInterface
     {
         global $api;
         
-        $row = $api->db->query("SELECT * FROM aiRequests WHERE id = ?", $id)->fetchAssoc();
-        $eventData = json_decode($row['promptEvent'], true);
-        $event = PromptEvent::fromArray($eventData);
+        $row = $api->db->query("SELECT * FROM aiEvents WHERE id = ?", $id)->fetchAssoc();
+        $eventData = json_decode($row['aiEvent'], true);
+        $event = AiEvent::fromArray($eventData);
         
         try {
             $this->prompt($id, $event);
             $event->dispatch();
-            $api->db->query("DELETE FROM aiRequests WHERE id = ?", $id);
+            $api->db->query("DELETE FROM aiEvents WHERE id = ?", $id);
         } catch (\Throwable $e) {
             $api->log->error('ai', "Error processing request {$id}: {$e->getMessage()}, trace {$e->getTraceAsString()}");
             $api->db->query(
-                "UPDATE aiRequests SET status = ?, reqEnd = ? WHERE id = ?", 
+                "UPDATE aiEvents SET status = ?, end = ? WHERE id = ?", 
                 PromptStatusEnum::ERROR, 
                 time(),
                 $id
@@ -92,11 +92,11 @@ class AiGenerator implements ListenerInterface
     * Decodes the JSON response and stores it in the event's response data.
     *
     * @param int $id The ID of the request being processed.
-    * @param PromptEvent $event The event containing the request details.
+    * @param AiEvent $event The event containing the request details.
     * @global object $api The global API object containing configuration and logging utilities.
     * @throws JsonException If the JSON decoding of the response fails.
     */
-    private function prompt(int $id, PromptEvent $event): void
+    private function prompt(int $id, AiEvent $event): void
     {
         global $api;
         
@@ -104,7 +104,7 @@ class AiGenerator implements ListenerInterface
         $prompt = $event->request['prompt'];
 
         $response = $api->ai->prompt($ai, $prompt);
-        $api->db->query("UPDATE aiRequests SET response = ? WHERE id = ?", json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), $id);
+        $api->db->query("UPDATE aiEvents SET response = ? WHERE id = ?", json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), $id);
         $event->response['data'] = $response;
     }
 }

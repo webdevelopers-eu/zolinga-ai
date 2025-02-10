@@ -13,7 +13,7 @@ use Zolinga\System\Types\OriginEnum;
  * @author Daniel Sevcik <sevcik@zolinga.ort>
  * @date 2025-02-07
  */
-class PromptEvent extends RequestResponseEvent {
+class AiEvent extends RequestResponseEvent {
     private const REQUEST_DEFAULTS = [
         'ai' => 'default',
         'prompt' => '',
@@ -26,7 +26,7 @@ class PromptEvent extends RequestResponseEvent {
     ];
 
     /**
-     * PromptEvent constructor.
+     * AiEvent constructor.
      *
      * @param string $type The type of the event.
      * @param OriginEnum $origin The origin of the event, defaults to OriginEnum::INTERNAL.
@@ -47,7 +47,7 @@ class PromptEvent extends RequestResponseEvent {
 
         foreach (self::REQUEST_REQUIRED as $key) {
             if (!isset($request[$key]) || empty($request[$key])) {
-                throw new \Exception("Missing required parameter '$key' in PromptEvent request.");
+                throw new \Exception("Missing required parameter '$key' in AiEvent request.");
             }
         }
 

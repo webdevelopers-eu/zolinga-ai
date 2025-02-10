@@ -3,7 +3,7 @@
 namespace Zolinga\AI\Elements;
 
 use Parsedown;
-use Zolinga\AI\Events\PromptEvent;
+use Zolinga\AI\Events\AiEvent;
 use Zolinga\AI\Model\AiTextModel;
 use Zolinga\Cms\Events\ContentElementEvent;
 use Zolinga\System\Events\ListenerInterface;
@@ -95,7 +95,7 @@ class AiTextElement implements ListenerInterface
             return;
         }
 
-        $event = new PromptEvent("ai:article:generated", OriginEnum::INTERNAL, [
+        $event = new AiEvent("ai:article:generated", OriginEnum::INTERNAL, [
             'ai' => $ai,
             'prompt' => $prompt,
         ]);
@@ -111,10 +111,10 @@ class AiTextElement implements ListenerInterface
      * 
      * The expectation is that the input is in Markdown format.
      *
-     * @param PromptEvent $event
+     * @param AiEvent $event
      * @return void
      */
-    public function onGenerateArticle(PromptEvent $event): void
+    public function onGenerateArticle(AiEvent $event): void
     {
         global $api;
 
@@ -125,6 +125,6 @@ class AiTextElement implements ListenerInterface
         $article->contents = $contents;
         $article->save();
 
-        $event->setStatus(PromptEvent::STATUS_OK, "Article saved.");
+        $event->setStatus(AiEvent::STATUS_OK, "Article saved.");
     }
 }
