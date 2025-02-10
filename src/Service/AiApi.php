@@ -111,19 +111,23 @@ class AiApi implements ServiceInterface
     * });
     *
     * @param string $backend The backend to use as defined in the configuration.
-    * @param string $model The model to use.
     * @param string $prompt The prompt to send.
     * @param array|null $format Expected output format specified as JSON schema or "json" or null. See Oolama API documentation.
     * @return array|string The response from the AI model - if the $format is set to "json" or JSON schema, the response is decoded array, otherwise it is a string.
     */
-    public function prompt(string $backend, string $model, string $prompt, ?array $format = null): array|string
+    public function prompt(string $backend, string $prompt, ?array $format = null): array|string
     {
         global $api;
 
-        if (!isset($api->config['ai']['backends'][$backend])) {
+        if (!is_array($api->config['ai']['backends'][$backend])) {
             throw new \Exception("Unknown AI backend: $backend, check that the configuration key .ai.backends.$backend exists in your Zolinga configuration.", 1222);
         }
-        $uri = $api->config['ai']['backends'][$backend]['uri'];
+        $config = array_merge(
+            $api->config['ai']['backends']['default'], 
+            $api->config['ai']['backends'][$backend]
+        );
+        $model = $config['model'];
+        $uri = $config['uri'];
         $url = rtrim($uri, '/') . '/api/chat';
         $urlSafe = parse_url($url, PHP_URL_SCHEME) . '://' . parse_url($url, PHP_URL_HOST);
         
@@ -154,7 +158,7 @@ class AiApi implements ServiceInterface
                 "Accept: application/json\r\n" .
                 "Accept-Charset: utf-8\r\n",
                 'content' => json_encode($request, JSON_UNESCAPED_UNICODE),
-                'timeout' => 3600, // 1 hour
+                'timeout' => 28800, // 28800s = 8 hours
             ],
         ]));
         $api->log->info('ai', "Ollama request took " . round(microtime(true) - $timer, 2) . "s.");

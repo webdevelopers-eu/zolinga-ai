@@ -65,7 +65,8 @@
       "backends": {
         "default": {
           "type": "ollama",
-          "uri": "http://login:password@127.0.0.1:3000/"
+          "uri": "http://login:password@127.0.0.1:3000/",
+          "model": "deepseek-r1:1.5b"
         }
       }
     }

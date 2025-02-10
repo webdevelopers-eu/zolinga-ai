@@ -1,28 +1,27 @@
 ## Syntax
 
 ```html
-<ai-text model="{MODEL}" [backend="{SOURCE}"] [uuid="{UUID}"]>{PROMPT}</ai-text>
+<ai-text [backend="{SOURCE}"] [uuid="{UUID}"]>{PROMPT}</ai-text>
 ```
 
 Example:
 
 ```html
-<ai-text model="deepseek-r1:8b" backend="default">
+<ai-text backend="default">
     Write a blog post about the Zolinga platform.
 </ai-text>
 ```
 
 ## Attributes
 
-- `model`: The model to use for generating the article. The model must be supported by your backend AI service.
 - `backend`: The backend to use for generating the article. The backends are defined in your [configuration](:Zolinga Core:Configuration)'s key. Default: `default`.
 - `uuid`: The UUID of the article. If the UUID is not provided, the system will generate a new UUID hash for the article from the prompt, model, and backend. AI generated content is stored in the database under the UUID. Therefore, if you want to display the same article multiple times, you should provide the same UUID.
 
 ## Backend Configuration
 
-The backend configuration is defined in your [configuration](:Zolinga Core:Configuration). The configuration key is `ai.backends`. The configuration should be an associative array where the key is the backend name and the value is an array of configuration options for the backend.
+The backend configuration is defined in your [configuration](:Zolinga Core:Configuration) under the `ai.backends` key. This configuration should be an associative array where each key is a backend name and its value is an array of configuration options for that backend. The `default` backend is mandatory. Any incomplete backend definitions will inherit missing options from the `default` backend.
 
-Currently only Ollama backend API is supported. The example of the configuration of 2 backends `default` and `server2` is shown below:
+Currently only Ollama backend API is supported. The example of the configuration of 2 backends `default` and `powerhouse` is shown below:
 ```json
 {
     "config": {
@@ -30,11 +29,12 @@ Currently only Ollama backend API is supported. The example of the configuration
             "backends": {
                 "default": {
                     "type": "ollama",
-                    "uri": "http://login:password@127.0.0.1:3000/"
+                    "uri": "http://login:password@127.0.0.1:3000/",
+                    "model": "deepseek-r1:8b"
                 },
-                "server2": {
-                    "type": "ollama",
-                    "uri": "http://login2:password2@nvidia-rack.local:3000/"
+                "powerhouse": {
+                    "uri": "http://login2:password2@nvidia-rack.local:3000/",
+                    "model": "deepseek-r1:671b"
                 }
             }
         }

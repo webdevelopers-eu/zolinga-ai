@@ -33,7 +33,6 @@ class AiTextElement implements ListenerInterface
         global $api;
 
         $backend = $event->input->getAttribute("backend") ?: "default";
-        $model = $event->input->getAttribute("model");
         $prompt = $event->input->textContent;
 
         // Erase the contents of the element to be safe
@@ -42,7 +41,7 @@ class AiTextElement implements ListenerInterface
         if ($event->input->getAttribute("uuid")) {
             $uuid = $event->input->getAttribute("uuid");
         } else {
-            $fingerprint = "$backend:$model::$prompt";
+            $fingerprint = "$backend:$prompt";
             $fingerprint = preg_replace('/\s+/', ' ', trim($fingerprint));
             $uuid = 'ai:article:' . substr(sha1($fingerprint), 0, 12);
         }
@@ -61,7 +60,7 @@ class AiTextElement implements ListenerInterface
             // Selectively regenerate the article 
             if (ZOLINGA_DEBUG && isset($_REQUEST['regenerate'])) {
                 if (intval($_REQUEST['regenerate'] ?: 0) == $article->id) {
-                    $this->generateArticle($uuid, $backend, $model, $prompt);
+                    $this->generateArticle($uuid, $backend, $prompt);
                 }
             }
         } else {
@@ -69,7 +68,7 @@ class AiTextElement implements ListenerInterface
             $errorMsgElement->setAttribute("data-text-id", "");
             $errorMsgElement->setAttribute("class", "zolinga-text warning");
             $errorMsgElement->appendChild(new \DOMText(dgettext("zolinga-ai", "⚠️ The server is busy. Please try again later.")));
-            $this->generateArticle($uuid, $backend, $model, $prompt);
+            $this->generateArticle($uuid, $backend, $prompt);
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found.");
             // Throw HTTP error 503 with Retry-After: 600
             header("Retry-After: 600");
@@ -85,11 +84,10 @@ class AiTextElement implements ListenerInterface
      *
      * @param string $uuid The unique identifier of the article.
      * @param mixed $backend The backend to use.
-     * @param mixed $model The model to use.
      * @param mixed $prompt The prompt to use.
      * @return void
      */
-    private function generateArticle(string $uuid, $backend, $model, $prompt): void
+    private function generateArticle(string $uuid, $backend, $prompt): void
     {
         global $api;
 
@@ -99,7 +97,6 @@ class AiTextElement implements ListenerInterface
 
         $event = new PromptEvent("ai:article:generated", OriginEnum::INTERNAL, [
             'backend' => $backend,
-            'model' => $model,
             'prompt' => $prompt,
         ]);
         $event->uuid = $uuid;

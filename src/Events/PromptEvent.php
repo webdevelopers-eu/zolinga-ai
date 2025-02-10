@@ -16,14 +16,12 @@ use Zolinga\System\Types\OriginEnum;
 class PromptEvent extends RequestResponseEvent {
     private const REQUEST_DEFAULTS = [
         'backend' => 'default',
-        'model' => '',
         'prompt' => '',
 
     ];
 
     private const REQUEST_REQUIRED = [
         'backend',
-        'model',
         'prompt',
     ];
 
