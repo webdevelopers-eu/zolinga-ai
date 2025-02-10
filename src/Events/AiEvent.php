@@ -17,7 +17,7 @@ class AiEvent extends RequestResponseEvent {
     private const REQUEST_DEFAULTS = [
         'ai' => 'default',
         'prompt' => '',
-
+        'format' => null
     ];
 
     private const REQUEST_REQUIRED = [
@@ -35,8 +35,10 @@ class AiEvent extends RequestResponseEvent {
      */
     public function __construct(string $type, OriginEnum $origin = OriginEnum::INTERNAL, ArrayAccess|array $request = new ArrayObject, ArrayAccess|array $response = new ArrayObject) {
         global $api;
+        
         $request = array_merge(self::REQUEST_DEFAULTS, (array) $request);
         $this->validateRequest($request);
+
         parent::__construct($type, $origin, $request, $response);
     }
 
@@ -49,6 +51,10 @@ class AiEvent extends RequestResponseEvent {
             if (!isset($request[$key]) || empty($request[$key])) {
                 throw new \Exception("Missing required parameter '$key' in AiEvent request.");
             }
+        }
+
+        if ($request['format'] !== null && $request['format'] !== 'json' && !is_array($request['format'])) {
+            throw new \Exception("Invalid format '{$request['format']}' in AiEvent request. See Oolama API documentation.");
         }
 
         if (!is_array($api->config['ai']['backends'][$request['ai']])) {
