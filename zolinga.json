@@ -65,8 +65,9 @@
       "backends": {
         "default": {
           "type": "ollama",
-          "uri": "http://login:password@127.0.0.1:3000/",
-          "model": "deepseek-r1:1.5b"
+          "url": "http://login:password@127.0.0.1:3000/api",
+          "model": "llama3.2:1b",
+          "replace": [{"search": "/^<think>.*?<\\/think>/", "replace": ""}]
         }
       }
     }

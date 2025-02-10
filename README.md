@@ -18,7 +18,7 @@ Zolinga AI is a module providing AI features for the [Zolinga](https://github.co
                "backends": {
                    "default": {
                        "type": "ollama",
-                       "uri": "http://login:password@127.0.0.1:3000/",
+                       "url": "http://login:password@127.0.0.1:3000/",
                        "model": "deepseek-r1:8b"
                    },
                    "fast": {

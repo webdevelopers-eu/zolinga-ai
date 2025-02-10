@@ -5,6 +5,7 @@ namespace Zolinga\AI\Service;
 use DOMDocument;
 use Parsedown;
 use Zolinga\AI\Enum\AiaiEnum;
+use Zolinga\AI\Enum\AiTypeEnum;
 use Zolinga\AI\Events\AiEvent;
 use Zolinga\System\Events\ServiceInterface;
 
@@ -118,25 +119,14 @@ class AiApi implements ServiceInterface
     {
         global $api;
 
-        if (!is_array($api->config['ai']['backends'][$ai])) {
-            throw new \Exception("Unknown AI backend: $ai, check that the configuration key .ai.backends.$ai exists in your Zolinga configuration.", 1222);
-        }
-        $config = array_merge(
-            $api->config['ai']['backends']['default'], 
-            $api->config['ai']['backends'][$ai]
-        );
+        $config = $this->getBackendConfig($ai);
         $model = $config['model'];
-        $uri = $config['uri'];
-        $url = rtrim($uri, '/') . '/api/chat';
-        $urlSafe = parse_url($url, PHP_URL_SCHEME) . '://' . parse_url($url, PHP_URL_HOST);
-        
-        $user = parse_url($uri, PHP_URL_USER);
-        $pass = parse_url($uri, PHP_URL_PASS);
-        
-        $basicAuth = $user && $pass ? base64_encode("$user:$pass") : null;
+        $url = $config['url'];
+        $url = rtrim($url, '/') . '/generate';
+
         $request = [
             'model' => $model,
-            'messages' => [['role' => 'user', 'content' => $prompt]],
+            'prompt' => $prompt,
             'stream' => false,
             'options' => ['temperature' => 0],
         ];
@@ -144,34 +134,36 @@ class AiApi implements ServiceInterface
         if ($format !== null) {
             $request['format'] = $format;
         }
-       
-        $timer = microtime(true);
-        $api->log->info('ai', "Ollama request to $urlSafe using model {$model}: ".substr($prompt, 0, 100)."...");
-        $response = file_get_contents($url, false, stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' =>
-                "Content-Type: application/json; charset=utf-8\r\n" .
-                ($basicAuth ? "Authorization: Basic $basicAuth\r\n" : '') .
-                "User-Agent: ZolingaAI/1.0\r\n" .
-                "Accept: application/json\r\n" .
-                "Accept-Charset: utf-8\r\n",
-                'content' => json_encode($request, JSON_UNESCAPED_UNICODE),
-                'timeout' => 28800, // 28800s = 8 hours
-            ],
-        ]));
-        $api->log->info('ai', "Ollama request took " . round(microtime(true) - $timer, 2) . "s.");
-        
-        $raw = json_decode($response, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-        $answer = $raw['message']['content'] 
+
+        $response = $this->httpRequest($url, $request);
+        $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $answer = $data['response'] 
             or throw new \Exception("Unexpected answer from the model: $response", 1225);
 
-        if ($format !== null) { // then it is serialized json
+        if ($format === null) { // then it is serialized json
+            foreach($config['replace'] ?: [] as ['search' => $search, 'replace' => $replace]) {
+                $answer = preg_replace($search, $replace, $answer);
+            }
+        } else {
             $answer = json_decode($answer, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)
                 or throw new \Exception("Failed to decode the model response: $answer", 1226);
         }
 
         return $answer;
+    }
+
+    private function getBackendConfig(string $ai): array
+    {
+        global $api;
+
+        if (!is_array($api->config['ai']['backends'][$ai])) {
+            throw new \Exception("Unknown AI backend: $ai, check that the configuration key .ai.backends.$ai exists in your Zolinga configuration.", 1222);
+        }
+        return array_merge(
+            array("type" => AiTypeEnum::OLLAMA, "model" => "llama3.2:1b"),
+            $api->config['ai']['backends']['default'], 
+            $api->config['ai']['backends'][$ai]
+        );
     }
 
     /**
@@ -203,5 +195,35 @@ class AiApi implements ServiceInterface
             </body>
             </html>",  LIBXML_NOERROR | LIBXML_NONET | LIBXML_NOWARNING);
         return $doc;
+    }
+
+    private function httpRequest(string $url, array $request): string
+    {
+        global $api;
+
+        $urlSafe = parse_url($url, PHP_URL_SCHEME) . '://' . parse_url($url, PHP_URL_HOST);
+        $user = parse_url($url, PHP_URL_USER);
+        $pass = parse_url($url, PHP_URL_PASS);
+        
+        $basicAuth = $user && $pass ? base64_encode("$user:$pass") : null;
+        $raw = json_encode($request, JSON_UNESCAPED_UNICODE);
+
+        $timer = microtime(true);
+        $api->log->info('ai', "Ollama request to $urlSafe (".number_format(strlen($raw))." bytes)...");
+        $response = file_get_contents($url, false, stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' =>
+                "Content-Type: application/json; charset=utf-8\r\n" .
+                ($basicAuth ? "Authorization: Basic $basicAuth\r\n" : '') .
+                "User-Agent: ZolingaAI/1.0\r\n" .
+                "Accept: application/json\r\n" .
+                "Accept-Charset: utf-8\r\n",
+                'content' => $raw,
+                'timeout' => 28800, // 28800s = 8 hours
+            ],
+        ]));
+        $api->log->info('ai', "Ollama responded in " . round(microtime(true) - $timer, 2) . "s (" . number_format(strlen($response)) . " bytes).");
+        return $response;
     }
 }

@@ -29,11 +29,11 @@ Currently only Ollama backend API is supported. The example of the configuration
             "backends": {
                 "default": {
                     "type": "ollama",
-                    "uri": "http://login:password@127.0.0.1:3000/",
+                    "url": "http://login:password@127.0.0.1:3000/",
                     "model": "deepseek-r1:8b"
                 },
                 "powerhouse": {
-                    "uri": "http://login2:password2@nvidia-rack.local:3000/",
+                    "url": "http://login2:password2@nvidia-rack.local:3000/",
                     "model": "deepseek-r1:671b"
                 }
             }

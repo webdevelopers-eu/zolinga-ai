@@ -2,6 +2,6 @@
 
 namespace Zolinga\AI\Enum;
 
-enum BackendTypeEnum: string {
+enum AiTypeEnum: string {
     case OLLAMA = "ollama";
 }
