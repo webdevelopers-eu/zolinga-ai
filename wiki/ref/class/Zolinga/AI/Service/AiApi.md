@@ -36,3 +36,6 @@ $api->ai->promptAsync($aiEvent);
 When the AI generates the article, it will trigger the specified `my-callback-event` event.
 You should have your [event listener](:Zolinga Core:Events and Listeners) for the `my-callback-event` event to handle the generated article.
 
+## Configuration
+
+For details refer to the [Zolinga AI Configuration](:Zolinga AI:Configuation) documentation.
