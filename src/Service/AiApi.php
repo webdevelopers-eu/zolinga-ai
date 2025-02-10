@@ -4,7 +4,7 @@ namespace Zolinga\AI\Service;
 
 use DOMDocument;
 use Parsedown;
-use Zolinga\AI\Enum\AiBackendEnum;
+use Zolinga\AI\Enum\AiaiEnum;
 use Zolinga\AI\Events\PromptEvent;
 use Zolinga\System\Events\ServiceInterface;
 
@@ -32,8 +32,7 @@ class AiApi implements ServiceInterface
      *  $api->ai->promptAsync(new PromptEvent(
      *      "my-response-process", 
      *      request: [
-     *        'backend' => 'default',
-     *        'model' => 'my-model',
+     *        'ai' => 'default',
      *        'prompt' => 'Hello, how are you?'
      *      ], 
      *      response: [
@@ -110,21 +109,21 @@ class AiApi implements ServiceInterface
     *     ]
     * });
     *
-    * @param string $backend The backend to use as defined in the configuration.
+    * @param string $ai The backend to use as defined in the configuration.
     * @param string $prompt The prompt to send.
     * @param array|null $format Expected output format specified as JSON schema or "json" or null. See Oolama API documentation.
     * @return array|string The response from the AI model - if the $format is set to "json" or JSON schema, the response is decoded array, otherwise it is a string.
     */
-    public function prompt(string $backend, string $prompt, ?array $format = null): array|string
+    public function prompt(string $ai, string $prompt, ?array $format = null): array|string
     {
         global $api;
 
-        if (!is_array($api->config['ai']['backends'][$backend])) {
-            throw new \Exception("Unknown AI backend: $backend, check that the configuration key .ai.backends.$backend exists in your Zolinga configuration.", 1222);
+        if (!is_array($api->config['ai']['backends'][$ai])) {
+            throw new \Exception("Unknown AI backend: $ai, check that the configuration key .ai.backends.$backend exists in your Zolinga configuration.", 1222);
         }
         $config = array_merge(
             $api->config['ai']['backends']['default'], 
-            $api->config['ai']['backends'][$backend]
+            $api->config['ai']['backends'][$ai]
         );
         $model = $config['model'];
         $uri = $config['uri'];

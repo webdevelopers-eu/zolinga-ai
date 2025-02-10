@@ -1,20 +1,20 @@
 ## Syntax
 
 ```html
-<ai-text [backend="{SOURCE}"] [uuid="{UUID}"]>{PROMPT}</ai-text>
+<ai-text [ai="{AI_BACKEND}"] [uuid="{UUID}"]>{PROMPT}</ai-text>
 ```
 
 Example:
 
 ```html
-<ai-text backend="default">
+<ai-text ai="default">
     Write a blog post about the Zolinga platform.
 </ai-text>
 ```
 
 ## Attributes
 
-- `backend`: The backend to use for generating the article. The backends are defined in your [configuration](:Zolinga Core:Configuration)'s key. Default: `default`.
+- `ai`: The backend to use for generating the article. The backends are defined in your [configuration](:Zolinga Core:Configuration)'s key. Default: `default`.
 - `uuid`: The UUID of the article. If the UUID is not provided, the system will generate a new UUID hash for the article from the prompt, model, and backend. AI generated content is stored in the database under the UUID. Therefore, if you want to display the same article multiple times, you should provide the same UUID.
 
 ## Backend Configuration

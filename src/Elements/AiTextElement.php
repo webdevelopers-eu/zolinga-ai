@@ -12,7 +12,7 @@ use Zolinga\System\Types\OriginEnum;
 /**
  * Processes CMS generative article content. 
  * 
- * Example: <ai-text backend="default" model="my-model">Hello, how are you?</ai-text>
+ * Example: <ai-text ai="default" model="my-model">Hello, how are you?</ai-text>
  * 
  * @author Daniel Sevcik <sevcik@webdevelopers.eu>
  * @date 2025-02-07
@@ -32,7 +32,7 @@ class AiTextElement implements ListenerInterface
     {
         global $api;
 
-        $backend = $event->input->getAttribute("backend") ?: "default";
+        $ai = $event->input->getAttribute("ai") ?: "default";
         $prompt = $event->input->textContent;
 
         // Erase the contents of the element to be safe
@@ -41,7 +41,7 @@ class AiTextElement implements ListenerInterface
         if ($event->input->getAttribute("uuid")) {
             $uuid = $event->input->getAttribute("uuid");
         } else {
-            $fingerprint = "$backend:$prompt";
+            $fingerprint = "$ai:$prompt";
             $fingerprint = preg_replace('/\s+/', ' ', trim($fingerprint));
             $uuid = 'ai:article:' . substr(sha1($fingerprint), 0, 12);
         }
@@ -60,7 +60,7 @@ class AiTextElement implements ListenerInterface
             // Selectively regenerate the article 
             if (ZOLINGA_DEBUG && isset($_REQUEST['regenerate'])) {
                 if (intval($_REQUEST['regenerate'] ?: 0) == $article->id) {
-                    $this->generateArticle($uuid, $backend, $prompt);
+                    $this->generateArticle($uuid, $ai, $prompt);
                 }
             }
         } else {
@@ -68,7 +68,7 @@ class AiTextElement implements ListenerInterface
             $errorMsgElement->setAttribute("data-text-id", "");
             $errorMsgElement->setAttribute("class", "zolinga-text warning");
             $errorMsgElement->appendChild(new \DOMText(dgettext("zolinga-ai", "⚠️ The server is busy. Please try again later.")));
-            $this->generateArticle($uuid, $backend, $prompt);
+            $this->generateArticle($uuid, $ai, $prompt);
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found.");
             // Throw HTTP error 503 with Retry-After: 600
             header("Retry-After: 600");
@@ -83,11 +83,11 @@ class AiTextElement implements ListenerInterface
      * and processed by the $this->onGenerateArticle() method.
      *
      * @param string $uuid The unique identifier of the article.
-     * @param mixed $backend The backend to use.
+     * @param mixed $ai The backend to use.
      * @param mixed $prompt The prompt to use.
      * @return void
      */
-    private function generateArticle(string $uuid, $backend, $prompt): void
+    private function generateArticle(string $uuid, $ai, $prompt): void
     {
         global $api;
 
@@ -96,7 +96,7 @@ class AiTextElement implements ListenerInterface
         }
 
         $event = new PromptEvent("ai:article:generated", OriginEnum::INTERNAL, [
-            'backend' => $backend,
+            'ai' => $ai,
             'prompt' => $prompt,
         ]);
         $event->uuid = $uuid;

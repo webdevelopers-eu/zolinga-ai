@@ -100,10 +100,10 @@ class AiGenerator implements ListenerInterface
     {
         global $api;
         
-        $backend = $event->request['backend']; // for now always 'ollama'
+        $ai = $event->request['ai']; // for now always 'ollama'
         $prompt = $event->request['prompt'];
 
-        $response = $api->ai->prompt($backend, $prompt);
+        $response = $api->ai->prompt($ai, $prompt);
         $api->db->query("UPDATE aiRequests SET response = ? WHERE id = ?", json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), $id);
         $event->response['data'] = $response;
     }

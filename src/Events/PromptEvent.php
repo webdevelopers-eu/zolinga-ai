@@ -15,13 +15,13 @@ use Zolinga\System\Types\OriginEnum;
  */
 class PromptEvent extends RequestResponseEvent {
     private const REQUEST_DEFAULTS = [
-        'backend' => 'default',
+        'ai' => 'default',
         'prompt' => '',
 
     ];
 
     private const REQUEST_REQUIRED = [
-        'backend',
+        'ai',
         'prompt',
     ];
 
@@ -30,7 +30,7 @@ class PromptEvent extends RequestResponseEvent {
      *
      * @param string $type The type of the event.
      * @param OriginEnum $origin The origin of the event, defaults to OriginEnum::INTERNAL.
-     * @param ArrayAccess|array $request The request data, defaults to a new ArrayObject. Required keys: backend, model, prompt.
+     * @param ArrayAccess|array $request The request data, defaults to a new ArrayObject. Required keys: ai, prompt.
      * @param ArrayAccess|array $response The response data, defaults to a new ArrayObject.
      */
     public function __construct(string $type, OriginEnum $origin = OriginEnum::INTERNAL, ArrayAccess|array $request = new ArrayObject, ArrayAccess|array $response = new ArrayObject) {
@@ -51,8 +51,8 @@ class PromptEvent extends RequestResponseEvent {
             }
         }
 
-        if (!is_array($api->config['ai']['backends'][$request['backend']])) {
-            throw new \Exception("AI backend '{$request['backend']}' not found in configuration key '.config.ai.backends.{$request['backend']}'.");
+        if (!is_array($api->config['ai']['backends'][$request['ai']])) {
+            throw new \Exception("AI backend '{$request['ai']}' not found in configuration key '.config.ai.backends.{$request['ai']}'.");
         }
     }
 }
