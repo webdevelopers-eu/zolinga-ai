@@ -62,12 +62,14 @@
 
   "config": {
     "ai": {
+      "log": true,
+      "systemPrompt": "You are an exceptionally talented copywriter.",
       "backends": {
         "default": {
           "type": "ollama",
           "url": "http://login:password@127.0.0.1:3000/api",
           "model": "llama3.2:1b",
-          "replace": [{"search": "/^<think>.*?<\\/think>/", "replace": ""}]
+          "replace": [{"search": "/^<think>.*?<\\/think>\\s*/s", "replace": ""}]
         }
       }
     }

@@ -113,9 +113,10 @@ class AiApi implements ServiceInterface
     * @param string $ai The backend to use as defined in the configuration.
     * @param string $prompt The prompt to send.
     * @param array|null $format Expected output format specified as JSON schema or "json" or null. See Oolama API documentation.
+    * @param array|null $options Optional parameters to customize the prompt. E.g. "{num_ctx: 4096}". See Ollama options.
     * @return array|string The response from the AI model - if the $format is set to "json" or JSON schema, the response is decoded array, otherwise it is a string.
     */
-    public function prompt(string $ai, string $prompt, ?array $format = null): array|string
+    public function prompt(string $ai, string $prompt, ?array $format = null, ?array $options = null): array|string
     {
         global $api;
 
@@ -128,17 +129,19 @@ class AiApi implements ServiceInterface
             'model' => $model,
             'prompt' => $prompt,
             'stream' => false,
-            'options' => ['temperature' => 0],
+            'system' => $api->config['ai']['systemPrompt'] ?: "You are a very capable content creator.",
         ];
 
         if ($format !== null) {
             $request['format'] = $format;
         }
+        if ($options !== null) {
+            $request['options'] = $options;
+        }
 
-        $response = $this->httpRequest($url, $request);
-        $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $data = $this->httpRequest($url, $request);
         $answer = $data['response'] 
-            or throw new \Exception("Unexpected answer from the model: $response", 1225);
+            or throw new \Exception("Unexpected answer from the model: ".json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 1225);
 
         if ($format === null) { // then it is serialized json
             foreach($config['replace'] ?: [] as ['search' => $search, 'replace' => $replace]) {
@@ -197,7 +200,7 @@ class AiApi implements ServiceInterface
         return $doc;
     }
 
-    private function httpRequest(string $url, array $request): string
+    private function httpRequest(string $url, array $request): array
     {
         global $api;
 
@@ -206,7 +209,8 @@ class AiApi implements ServiceInterface
         $pass = parse_url($url, PHP_URL_PASS);
         
         $basicAuth = $user && $pass ? base64_encode("$user:$pass") : null;
-        $raw = json_encode($request, JSON_UNESCAPED_UNICODE);
+        $this->log($request, "Request to $urlSafe");
+        $raw = json_encode($request, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
 
         $timer = microtime(true);
         $api->log->info('ai', "Ollama request to $urlSafe (".number_format(strlen($raw))." bytes)...");
@@ -224,6 +228,47 @@ class AiApi implements ServiceInterface
             ],
         ]));
         $api->log->info('ai', "Ollama responded in " . round(microtime(true) - $timer, 2) . "s (" . number_format(strlen($response)) . " bytes).");
-        return $response;
+
+        if (!$response) {
+            // Generate curl reproducible command
+            $curl = "curl -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'Accept-Charset: utf-8' -d ".escapeshellarg($raw)." '$url'";
+            $api->log->error('ai', "Failed to get a response from the AI model. Try to run the following command in your terminal to reproduce the error: $curl");
+            throw new \Exception("Failed to get a response from the AI model.", 1221);
+        }
+
+        $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR)
+            or throw new \Exception("Failed to decode the response: $response", 1227);
+
+        $this->log($data, "Response from $urlSafe (".number_format(strlen($response))." bytes)");
+
+        return $data;
+    }
+
+    private function log(string|array $message, string $extraMessage): void
+    {
+        global $api;
+
+        if (!$api->config['ai']['log']) return;
+
+
+        $print = '';
+        if (is_array($message)) {
+            if (isset($message['context'])) {
+                $message['context'] = "...removed for the log..."; // very long list of numbers 
+            }
+            foreach ($message as $key => $value) {
+                $valText = is_scalar($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+                $print .= "🟤 $key: " . $valText . "\n";
+            }
+        } else {
+            $print .= $message;
+        }
+
+        $separator = str_repeat('#', 80);
+        file_put_contents(
+            'private://zolinga-ai/ai.log', 
+            '<<<START ' . date('Y-m-d H:i:s') . "\n$separator\n## $extraMessage\n$separator\n$print\n>>>END\n", 
+            FILE_APPEND
+        );
     }
 }
