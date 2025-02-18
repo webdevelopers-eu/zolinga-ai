@@ -50,7 +50,7 @@ class AiTextElement implements ListenerInterface
         if ($article) {
             $doc = new \DOMDocument();
             $doc->loadXML($article->contents);
-            $body = $doc->getElementsByTagName('section')->item(0);
+            $body = $doc->getElementsByTagName('article')->item(0);
             if (!$body instanceof \DOMElement) {
                 throw new \Exception("Invalid article format: $article");
             }
@@ -64,7 +64,7 @@ class AiTextElement implements ListenerInterface
                 }
             }
         } else {
-            $errorMsgElement = $event->output->appendChild($event->output->ownerDocument->createElement("section"));
+            $errorMsgElement = $event->output->appendChild($event->output->ownerDocument->createElement("article"));
             $errorMsgElement->setAttribute("data-text-id", "");
             $errorMsgElement->setAttribute("class", "zolinga-text warning");
             $errorMsgElement->appendChild(new \DOMText(dgettext("zolinga-ai", "⚠️ The server is busy. Please try again later.")));

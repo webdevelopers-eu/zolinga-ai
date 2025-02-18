@@ -90,9 +90,9 @@ class AiTextModel
 
         // if ($format === ResponseTextFormat::MARKDOWN) { -- for now we support only MARKDOWN
         $doc = $api->ai->convertMarkdownToDOM($contents);
-        $sectionElement = $doc->getElementsByTagName('section')->item(0);
-        $sectionElement->setAttribute('class', 'zolinga-text');
-        $sectionElement->setAttribute('data-text-id', $this->id);
+        $articleElement = $doc->getElementsByTagName('article')->item(0);
+        $articleElement->setAttribute('class', 'zolinga-text');
+        $articleElement->setAttribute('data-text-id', $this->id);
         $contents = $doc->saveXML();  
 
         $this->contents = $contents;

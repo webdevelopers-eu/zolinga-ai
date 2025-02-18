@@ -139,7 +139,7 @@ class AiApi implements ServiceInterface
             $request['options'] = $options;
         }
 
-        $data = $this->httpRequest($url, $request);
+        $data = $this->httpRequest($url, $request, $model);
         $answer = $data['response'] 
             or throw new \Exception("Unexpected answer from the model: ".json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 1225);
 
@@ -194,13 +194,13 @@ class AiApi implements ServiceInterface
             <html>
             <head><meta charset=\"utf-8\"></head>
             <body>
-                <section>" . $contents . "</section>
+                <article>" . $contents . "</article>
             </body>
             </html>",  LIBXML_NOERROR | LIBXML_NONET | LIBXML_NOWARNING);
         return $doc;
     }
 
-    private function httpRequest(string $url, array $request): array
+    private function httpRequest(string $url, array $request, string $model): array
     {
         global $api;
 
@@ -213,7 +213,7 @@ class AiApi implements ServiceInterface
         $raw = json_encode($request, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
 
         $timer = microtime(true);
-        $api->log->info('ai', "Ollama request to $urlSafe (".number_format(strlen($raw))." bytes)...");
+        $api->log->info('ai', "Asking $model at $urlSafe (".number_format(strlen($raw))." bytes)...");
         $response = file_get_contents($url, false, stream_context_create([
             'http' => [
                 'method' => 'POST',
