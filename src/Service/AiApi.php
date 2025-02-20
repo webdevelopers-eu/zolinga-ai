@@ -227,7 +227,7 @@ class AiApi implements ServiceInterface
                 'timeout' => 28800, // 28800s = 8 hours
             ],
         ]));
-        $api->log->info('ai', "Ollama responded in " . round(microtime(true) - $timer, 2) . "s (" . number_format(strlen($response)) . " bytes).");
+        $api->log->info('ai', "Model $model responded in " . round(microtime(true) - $timer, 2) . "s (" . number_format(strlen($response)) . " bytes).");
 
         if (!$response) {
             // Generate curl reproducible command
