@@ -123,12 +123,10 @@ public function prompt(string $ai, string $prompt, ?array $format = null, ?array
         try {
             return $this->processPrompt($ai, $prompt, $format, $options);
         } catch (\Exception $e) {
-            if (!$retry) {
-                throw $e;
-            }
             trigger_error("Error processing prompt ($retry attempts left): " . $e->getMessage(), E_USER_WARNING);
         }
     }
+    throw new \Exception("Failed to process the prompt after multiple attempts.", 1228);
 }
 
 private function processPrompt(string $ai, string $prompt, ?array $format = null, ?array $options = null): array|string
