@@ -114,9 +114,24 @@ public function isPromptAsyncQueued(string $uuid): bool
 * @param string $prompt The prompt to send.
 * @param array|null $format Expected output format specified as JSON schema or "json" or null. See Oolama API documentation.
 * @param array|null $options Optional parameters to customize the prompt. E.g. "{num_ctx: 4096}". See Ollama options.
+* @param int $retry The number of times to retry the request in case of failure.
 * @return array|string The response from the AI model - if the $format is set to "json" or JSON schema, the response is decoded array, otherwise it is a string.
 */
-public function prompt(string $ai, string $prompt, ?array $format = null, ?array $options = null): array|string
+public function prompt(string $ai, string $prompt, ?array $format = null, ?array $options = null, int $retry = 3): array|string
+{
+    while ($retry-- > 0) {
+        try {
+            return $this->processPrompt($ai, $prompt, $format, $options);
+        } catch (\Exception $e) {
+            if (!$retry) {
+                throw $e;
+            }
+            trigger_error("Error processing prompt ($retry attempts left): " . $e->getMessage(), E_USER_WARNING);
+        }
+    }
+}
+
+private function processPrompt(string $ai, string $prompt, ?array $format = null, ?array $options = null): array|string
 {
     global $api;
     
@@ -140,16 +155,19 @@ public function prompt(string $ai, string $prompt, ?array $format = null, ?array
     }
     
     $data = $this->httpRequest($url, $request, $model);
-    $answer = $data['response'] 
+    $answerRaw = $data['response'] 
     or throw new \Exception("Unexpected answer from the model: ".json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 1225);
     
     if ($format === null) { // then it is serialized json
+        $answer = $answerRaw;
         foreach($config['replace'] ?: [] as ['search' => $search, 'replace' => $replace]) {
             $answer = preg_replace($search, $replace, $answer);
         }
     } else {
-        $answer = json_decode($answer, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)
-        or throw new \Exception("Failed to decode the model response: $answer", 1226);
+        $answer = json_decode($answerRaw, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        if (!is_array($answer)) {
+            throw new \Exception("Failed to decode the model response: " . json_encode($answerRaw), 1226);
+        }
     }
     
     return $answer;
