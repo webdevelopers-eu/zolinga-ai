@@ -125,7 +125,7 @@ class AiTextElement implements ListenerInterface
         
         $uuid = $event->uuid;
         $contents = $event->response['data'];
-        $triggerURL = $event->response['triggerURL'] ?? null;
+        $triggerURL = $event->request['triggerURL'] ?? null;
         
         $article = AiTextModel::getTextModel($uuid) ?: AiTextModel::createTextModel($uuid, $contents, $triggerURL);
         $article->contents = $contents;
