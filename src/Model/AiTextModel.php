@@ -41,6 +41,8 @@ class AiTextModel
      */
     private string $contents;
 
+    public private(set) ?string $triggerURL;
+
     /**
      * Creates a new AI article model.
      * 
@@ -54,6 +56,8 @@ class AiTextModel
         $this->id = $rowData['id'];
         $this->uuid = $rowData['uuid'];
         $this->contents = $rowData['contents'];
+        $this->triggerURL = $rowData['triggerURL'] ?? null;
+
         $contents = preg_replace('/<think>.*?<\/think>/', '', $this->contents);
     }
 
@@ -61,6 +65,7 @@ class AiTextModel
         switch ($name) {
             case 'contents':
                 return $this->contents;
+
             default:
                 throw new \Exception("Property '$name' does not exist.", 1224);
         }
@@ -106,7 +111,11 @@ class AiTextModel
     public function save() {
         global $api;
 
-        $api->db->query("UPDATE aiTexts SET contents = ? WHERE uuidHash = UNHEX(SHA1(?))", $this->contents, $this->uuid);
+        $api->db->query("
+            UPDATE aiTexts 
+            SET contents = ?, triggerURL = ?
+            WHERE uuidHash = UNHEX(SHA1(?))", 
+            $this->contents, $this->triggerURL, $this->uuid);
     }
 
     /**
@@ -114,13 +123,14 @@ class AiTextModel
      *
      * @param string $uuid The UUID of the article.
      * @param string $contents The contents of the article.
+     * @param string|null $triggerURL The trigger URL of the article.
      * @return AiTextModel The created article.
      */
-    static public function createTextModel(string $uuid, string $contents): AiTextModel
+    static public function createTextModel(string $uuid, string $contents, ?string $triggerURL): AiTextModel
     {
         global $api;
 
-        $id = $api->db->query("INSERT INTO aiTexts (uuid, uuidHash, contents) VALUES (?, UNHEX(SHA1(?)), ?)", $uuid, $uuid, $contents);
+        $id = $api->db->query("INSERT INTO aiTexts (uuid, uuidHash, contents, triggerURL) VALUES (?, UNHEX(SHA1(?)), ?, ?)", $uuid, $uuid, $contents, $triggerURL);
         if (!$id) {
             throw new \Exception("Failed to insert AI article into database.", 1225);
         }

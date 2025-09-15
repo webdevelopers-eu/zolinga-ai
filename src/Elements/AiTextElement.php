@@ -102,6 +102,7 @@ class AiTextElement implements ListenerInterface
         $event = new AiEvent("ai:article:generated", OriginEnum::INTERNAL, [
             'ai' => $ai,
             'prompt' => $prompt,
+            'triggerURL' => $api->url->getCurrentUrl()
         ]);
         $event->uuid = $uuid;
         
@@ -124,8 +125,9 @@ class AiTextElement implements ListenerInterface
         
         $uuid = $event->uuid;
         $contents = $event->response['data'];
+        $triggerURL = $event->response['triggerURL'] ?? null;
         
-        $article = AiTextModel::getTextModel($uuid) ?: AiTextModel::createTextModel($uuid, $contents);
+        $article = AiTextModel::getTextModel($uuid) ?: AiTextModel::createTextModel($uuid, $contents, $triggerURL);
         $article->contents = $contents;
         $article->save();
         

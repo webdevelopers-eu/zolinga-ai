@@ -25,10 +25,18 @@ class AtomProcessor
 
         $this->parseExtractVariables();
 
-        foreach($this->xpath->query('./wf:validate', $this->atomElement) as $node) {
+        foreach($this->xpath->query('./wf:test', $this->atomElement) as $node) {
             /** @var \DOMElement $node */
-            $this->validators[] = $node->textContent;
+            $this->validators[] = [
+                "expect" => $node->getAttribute('expect') ?: 'yes',
+                "text" => $node->textContent,
+                "pattern" => $node->hasAttribute('pattern') ? $node->getAttribute('pattern') : null
+            ];
         }
+        // Sort regexp first
+        usort($this->validators, fn($a, $b) =>
+            ($a['pattern'] ? 1 : 0) <=> ($b['pattern'] ? 1 : 0)
+        );
     }
 
     private function parseExtractVariables() {
@@ -40,14 +48,14 @@ class AtomProcessor
             $value = $node->hasAttribute('value') ? $node->getAttribute('value') : 
                 ($node->childNodes->length ? $node->textContent : null);
             
-            if ($node->getAttribute('generate') === 'true') { // AI generated
+            if ($node->getAttribute('generate') === 'yes') { // AI generated
                 $options = array_map(fn (DOMElement $node) => 
                     $node->getAttribute('value') ? $node->childNodes->length : $node->textContent,
                     iterator_to_array($this->xpath->query('./wf:option', $node)));
                 $this->generateVariables[] = [
                     "name" => $name,
                     "pattern" => $node->getAttribute('pattern'),
-                    "required" => $node->getAttribute('required') === 'required',
+                    "required" => $node->getAttribute('required') === 'yes',
                     "value" => $value,
                     "options" => $options
                 ];
@@ -90,7 +98,7 @@ class AtomProcessor
             $data[$matches[1]] ?? $matches[0], $string);
     }
 
-    private function validate(array $data): bool {  
+    private function test(array $data): bool {  
         foreach ($this->generateVariables as $i) {
             if ($i['required'] && empty($data[$i['name']])) {
                 trigger_error("The required variable '{$i['name']}' is missing.", E_USER_WARNING);
@@ -102,21 +110,27 @@ class AtomProcessor
             }
         }
 
-        foreach ($this->validators as $validateText) {
-            // Generate new Atom processor
-            $dom = new DOMDocument;
-            $dom->loadXML('<ai xmlns="http://www.zolinga.org/ai/workflow">
-                <var name="answer" generate="true" required="true">
-                    <option value="yes"/>
-                    <option value="no"/>
-                </var>
-            </ai>');
+        foreach ($this->validators as $validator) {
+            $text = $this->replaceVars($validator['text'], $data);
 
-            $dom->documentElement->setAttribute('prompt', $this->replaceVars($validateText, $data));
-            $atom = new AtomProcessor($dom->documentElement, $data);
-            ["answer" => $answer] = $atom->process();
+            if ($validator['pattern']) {
+                $testResult = preg_match("/{$validator['pattern']}/", $data[$validator['name']]) ? 'yes' : 'no';
+            } else {
+                // Generate new Atom processor
+                $dom = new DOMDocument;
+                $dom->loadXML('<ai xmlns="http://www.zolinga.org/ai/workflow">
+                    <var name="answer" generate="yes" required="yes">
+                        <option value="yes"/>
+                        <option value="no"/>
+                    </var>
+                </ai>');
 
-            if ($answer === 'no') return false;
+                $dom->documentElement->setAttribute('prompt', $text);
+                $atom = new AtomProcessor($dom->documentElement, $data);
+                ["answer" => $testResult] = $atom->process();
+            }
+
+            if ($testResult !== $validator['expect']) return false;
         }
         return true;
     }
@@ -132,10 +146,13 @@ class AtomProcessor
                     format: $this->getJsonSchema());
 
                 $data = array_merge($this->data, $resp);
-                $validated = $this->validate($data);
-            } while (!$validated && $maxAttempts-- > 0);
+                $testResult = $this->test($data);
+                if (!$testResult) {
+                    trigger_error("Validation failed, retrying... (attempts left: $maxAttempts)", E_USER_WARNING);
+                }   
+            } while (!$testResult && $maxAttempts-- > 0);
 
-            if (!$validated) {
+            if (!$testResult) {
                 throw new \RuntimeException('Failed to validate workflow data: ' . json_encode($data));
             }
         } else {

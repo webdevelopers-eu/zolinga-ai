@@ -4,6 +4,7 @@ CREATE TABLE `aiTexts` (
   `uuidHash` binary(20) NOT NULL,
   `contents` text DEFAULT 'null',
   `lang` varchar(5) NOT NULL DEFAULT 'en-US',
+  `triggerURL` varchar(2048) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id_UNIQUE` (`id`),
   UNIQUE KEY `uuid_UNIQUE` (`uuid`),
