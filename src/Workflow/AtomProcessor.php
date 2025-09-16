@@ -99,8 +99,14 @@ class AtomProcessor
     }
 
     private static function replaceVars(string $string, array $data): string {
-        return preg_replace_callback('/\$\{(\w+)\}/', fn($matches) =>
-            $data[$matches[1]] ?? $matches[0], $string);
+        $ret = $string;
+
+        do {
+            $ret = preg_replace_callback('/\$\{(\w+)\}/', fn($matches) =>
+                $data[$matches[1]] ?? $matches[0], $string, count: $count);
+        } while ($count); // recusive
+
+        return $ret;
     }
 
     private function test(array $data): bool {  
@@ -135,7 +141,9 @@ class AtomProcessor
                 ["answer" => $testResult] = $atom->process();
             }
 
-            if ($testResult !== $validator['expect']) return false;
+            if ($testResult !== $validator['expect']) {
+                return false;
+            }
         }
         return true;
     }
@@ -148,6 +156,7 @@ class AtomProcessor
             $maxAttempts = 5;
             do {
                 $schema = $this->getJsonSchema();
+                $api->log->info('ai', 'Prompting AI to generate ' . implode(', ', array_keys($schema['properties'])));
                 $resp = $api->ai->prompt(
                     'workflow', 
                     self::replaceVars($this->prompt, $this->data), 
