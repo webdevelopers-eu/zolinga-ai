@@ -47,18 +47,22 @@ class AiGenerator implements ListenerInterface
     {
         global $api;
         do {
-            $id = $api->db->query("SELECT id FROM aiEvents WHERE status = ? ORDER BY created ASC", PromptStatusEnum::QUEUED)['id'];
-            if ($id) {
-                // Try to lock the row by setting the status to 'processing'
-                $count = $api->db->query(
-                    "UPDATE aiEvents SET status = ?, start = ? WHERE id = ? AND status = 'queued'", 
-                    PromptStatusEnum::PROCESSING, 
-                    time(),
-                    $id
-                );
-                if ($count == 1) {
-                    $this->processRequest($id);
-                }
+            $id = $api->db->query(
+                "SELECT id FROM aiEvents WHERE status = ? ORDER BY created DESC, id DESC LIMIT 1", 
+                PromptStatusEnum::QUEUED
+            )['id'];
+
+            if (!$id) break;
+
+            // Try to lock the row by setting the status to 'processing'
+            $count = $api->db->query(
+                "UPDATE aiEvents SET status = ?, start = ? WHERE id = ? AND status = 'queued'", 
+                PromptStatusEnum::PROCESSING, 
+                time(),
+                $id
+            );
+            if ($count == 1) {
+                $this->processRequest($id);
             }
         } while ($id);
     }
