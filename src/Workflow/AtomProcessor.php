@@ -6,6 +6,7 @@ namespace Zolinga\AI\Workflow;
 
 use DOMDocument;
 use DOMElement;
+use DOMEntity;
 use DOMXPath;
 
 class AtomProcessor
@@ -45,13 +46,12 @@ class AtomProcessor
         foreach ($this->xpath->query('./wf:var', $this->atomElement) as $node) {
             /** @var \DOMElement $node */
             $name = $node->getAttribute('name');
-            $value = $node->hasAttribute('value') ? $node->getAttribute('value') : 
-                ($node->childNodes->length ? $node->textContent : null);
+            $value = self::getElementValue($node);
             
             if ($node->getAttribute('generate') === 'yes') { // AI generated
-                $options = array_map(fn (DOMElement $node) => 
-                    $node->getAttribute('value') ? $node->childNodes->length : $node->textContent,
+                $options = array_map(fn (DOMElement $node) => self::getElementValue($node),
                     iterator_to_array($this->xpath->query('./wf:option', $node)));
+
                 $this->generateVariables[] = [
                     "name" => $name,
                     "pattern" => $node->getAttribute('pattern'),
@@ -93,6 +93,11 @@ class AtomProcessor
         return $ret;
     }
 
+    private static function getElementValue(DOMElement $element): ?string {
+        return $element->hasAttribute('value') ? $element->getAttribute('value') : 
+                ($element->childNodes->length ? $element->textContent : null);
+    }
+
     private static function replaceVars(string $string, array $data): string {
         return preg_replace_callback('/\$\{(\w+)\}/', fn($matches) =>
             $data[$matches[1]] ?? $matches[0], $string);
@@ -101,10 +106,10 @@ class AtomProcessor
     private function test(array $data): bool {  
         foreach ($this->generateVariables as $i) {
             if ($i['required'] && empty($data[$i['name']])) {
-                trigger_error("The required variable '{$i['name']}' is missing.", E_USER_WARNING);
+                trigger_error("The required variable '{$i['name']}' is missing: " . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), E_USER_WARNING);
                 return false;
             }
-            if ($i['pattern'] && !preg_match("/{$i['pattern']}/", $data[$i['name']])) {
+            if ($i['pattern'] && !preg_match("/{$i['pattern']}/s", $data[$i['name']])) {
                 trigger_error("The variable '{$i['name']}' does not match the required pattern {$i['pattern']}: {$data[$i['name']]}", E_USER_WARNING);
                 return false;
             }
@@ -114,7 +119,7 @@ class AtomProcessor
             $text = $this->replaceVars($validator['text'], $data);
 
             if ($validator['pattern']) {
-                $testResult = preg_match("/{$validator['pattern']}/", $data[$validator['name']]) ? 'yes' : 'no';
+                $testResult = preg_match("/{$validator['pattern']}/", $text) ? 'yes' : 'no';
             } else {
                 // Generate new Atom processor
                 $dom = new DOMDocument;
@@ -142,8 +147,12 @@ class AtomProcessor
         if ($this->prompt) {
             $maxAttempts = 5;
             do {
-                $resp = $api->ai->prompt('workflow', self::replaceVars($this->prompt, $this->data), 
-                    format: $this->getJsonSchema());
+                $schema = $this->getJsonSchema();
+                $resp = $api->ai->prompt(
+                    'workflow', 
+                    self::replaceVars($this->prompt, $this->data), 
+                    format: $schema
+                );
 
                 $data = array_merge($this->data, $resp);
                 $testResult = $this->test($data);
