@@ -168,7 +168,26 @@ class AtomProcessor
         return true;
     }
 
-    public function process(): array
+    private function parseReturnValue(?DOMElement $el, array $data): array|string {
+        if (!$el) { // No <return> tag, return all data
+            return $data;
+        }
+
+        $items = $this->xpath->query('./wf:item', $el);
+        if ($items->length === 0) {
+            return self::replaceVars($this->getElementValue($el), $data);
+        } else {
+            $ret = [];
+            foreach ($items as $item) {
+                /** @var \DOMElement $item */
+                $name = $item->getAttribute('name') ?: count($ret);
+                $ret[$name] = $this->parseReturnValue($item, $data);
+            }
+            return $ret;
+        }
+    }
+
+    public function process(): array|string
     {
         global $api;
         
@@ -205,7 +224,11 @@ class AtomProcessor
             $data = $atom->process();
         }
 
-        return $data;
+        // Return
+        $returnElement = $this->xpath->query('./wf:return[1]', $this->atomElement)->item(0) ?: null;
+        $return = $this->parseReturnValue($returnElement, $data);
+
+        return $return;
     }
 
 }

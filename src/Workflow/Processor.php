@@ -12,7 +12,7 @@ class Processor
     public function __construct(private DOMDocument $workflow) {}
 
 
-    public function process(array $data = []): array
+    public function process(array $data = []): array | string
     {
         $atom = new AtomProcessor($this->workflow->documentElement, $data);
         $return = $atom->process();
