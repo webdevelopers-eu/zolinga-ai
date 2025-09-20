@@ -7,6 +7,7 @@ use Parsedown;
 use Zolinga\AI\Enum\AiaiEnum;
 use Zolinga\AI\Enum\AiTypeEnum;
 use Zolinga\AI\Events\AiEvent;
+use Zolinga\AI\Workflow\WorkflowAtom;
 use Zolinga\System\Events\ServiceInterface;
 
 /**
@@ -183,6 +184,48 @@ private function getBackendConfig(string $ai): array
         $api->config['ai']['backends']['default'], 
         $api->config['ai']['backends'][$ai]
     );
+}
+
+/**
+ * Run workflow script provided as DOMDocument.
+ * 
+ * Workflow is a script that defines a series of AI chained
+ * operations (workflow atoms) to be performed. The returned
+ * values can be tested and validated.
+ * 
+ * For more information about the workflow format see 
+ * [Workflow](:Zolinga AI:Workflow Script) documentation.
+ *
+ * @param DOMDocument $workflow
+ * @param array $data
+ * @return array|string
+ * @throws \Exception If the workflow cannot be processed.
+ */
+public function runWorkflow(DOMDocument $workflow, array $data = []): array | string
+{
+    $atom = new WorkflowAtom($workflow->documentElement);
+    return $atom->process($data);
+}
+
+/**
+ * Run workflow script provided as a file path.
+ *
+ * @see Zolinga\AI\Service\AiApi::runWorkflow()
+ * 
+ * @param string $file The path to the workflow XML file.
+ * @param array $data Optional data to pass to the workflow.
+ * @return array|string
+ * @throws \Exception If the file does not exist or cannot be loaded.
+ */
+public function runWorkflowFile(string $file, array $data = []): array | string
+{
+    if (!file_exists($file)) {
+        throw new \Exception("Workflow file '$file' does not exist.", 1230);
+    }
+    
+    $dom = new DOMDocument();
+    $dom->load($file) or throw new \Exception("Failed to load workflow file '$file'.", 1231);
+    return $this->runWorkflow($dom, $data);
 }
 
 /**
