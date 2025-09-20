@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://www.zolinga.org/ai/workflow"
+           xmlns:wf="http://www.zolinga.org/ai/workflow"
+           elementFormDefault="qualified">
+
+    <!-- Common attribute groups -->
+    <xs:attributeGroup name="varAttributes">
+        <xs:attribute name="name" type="xs:string" use="required"/>
+        <xs:attribute name="generate" type="wf:yesNoType"/>
+        <xs:attribute name="required" type="wf:yesNoType"/>
+        <xs:attribute name="pattern" type="xs:string"/>
+        <xs:attribute name="value" type="xs:string"/>
+    </xs:attributeGroup>
+
+    <xs:attributeGroup name="testAttributes">
+        <xs:attribute name="expect" type="xs:string" default="yes"/>
+        <xs:attribute name="pattern" type="xs:string"/>
+    </xs:attributeGroup>
+
+    <xs:attributeGroup name="itemAttributes">
+        <xs:attribute name="name" type="xs:string"/>
+        <xs:attribute name="value" type="xs:string"/>
+    </xs:attributeGroup>
+
+    <!-- Simple types -->
+    <xs:simpleType name="yesNoType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="yes"/>
+            <xs:enumeration value="no"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <!-- Complex types -->
+    <xs:complexType name="promptType" mixed="true">
+        <xs:sequence>
+            <xs:any namespace="##other" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="varType" mixed="true">
+        <xs:sequence>
+            <xs:element name="option" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType mixed="true">
+                    <xs:attribute name="value" type="xs:string"/>
+                </xs:complexType>
+            </xs:element>
+        </xs:sequence>
+        <xs:attributeGroup ref="wf:varAttributes"/>
+    </xs:complexType>
+
+    <xs:complexType name="testType" mixed="true">
+        <xs:attributeGroup ref="wf:testAttributes"/>
+    </xs:complexType>
+
+    <xs:complexType name="itemType" mixed="true">
+        <xs:sequence>
+            <xs:element name="item" type="wf:itemType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attributeGroup ref="wf:itemAttributes"/>
+    </xs:complexType>
+
+    <xs:complexType name="returnType" mixed="true">
+        <xs:sequence>
+            <xs:element name="item" type="wf:itemType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="atomType">
+        <xs:sequence>
+            <xs:element name="prompt" type="wf:promptType" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="var" type="wf:varType" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:element name="test" type="wf:testType" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:element name="ai" type="wf:atomType" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:element name="return" type="wf:returnType" minOccurs="0" maxOccurs="1"/>
+        </xs:sequence>
+        <xs:attribute name="prompt" type="xs:string"/>
+    </xs:complexType>
+
+    <!-- Root elements -->
+    <xs:element name="workflow" type="wf:atomType"/>
+    <xs:element name="ai" type="wf:atomType"/>
+</xs:schema>
