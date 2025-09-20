@@ -70,8 +70,8 @@
         <xs:sequence>
             <xs:element name="prompt" type="wf:promptType" minOccurs="0" maxOccurs="1"/>
             <xs:element name="var" type="wf:varType" minOccurs="0" maxOccurs="unbounded"/>
-            <xs:element name="test" type="wf:testType" minOccurs="0" maxOccurs="unbounded"/>
             <xs:element name="ai" type="wf:atomType" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:element name="test" type="wf:testType" minOccurs="0" maxOccurs="unbounded"/>
             <xs:element name="return" type="wf:returnType" minOccurs="0" maxOccurs="1"/>
         </xs:sequence>
         <xs:attribute name="prompt" type="xs:string"/>
