@@ -313,7 +313,7 @@ private function httpRequest(string $url, array $request, string $model): array
             "prompt tokens {$data['prompt_eval_count']} [$promptSpeed tokens/s]",
         ];
     } else {
-        $stat=["error"];
+        throw new \Exception("The response from the AI model is missing required statistics.", 1229);
     }
             
     $api->log->info('ai', "Model $model responded: " . implode(", ", $stat));
