@@ -203,6 +203,12 @@ private function getBackendConfig(string $ai): array
  */
 public function runWorkflow(DOMDocument $workflow, array $data = []): array | string
 {
+    // Check
+    if ($workflow->schemaValidate("module://zolinga-ai/data/workflow.xsd") === false) {
+        $error = libxml_get_last_error();
+        throw new \Exception("Invalid workflow XML structure: " . $error->message, 1232);
+    }
+
     $atom = new WorkflowAtom($workflow->documentElement);
     return $atom->process($data);
 }
@@ -297,14 +303,19 @@ private function httpRequest(string $url, array $request, string $model): array
     $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR)
     or throw new \Exception("Failed to decode the response: $response", 1227);
     
-    $promptSpeed = round($data['prompt_eval_count'] / $data['prompt_eval_duration'] * 1000000000);
-    $responseSpeed = round($data['eval_count'] / $data['eval_duration'] * 1000000000);
-    $stat=[
-        "time " . round(microtime(true) - $timer, 2) . "s",
-        "size " . number_format(strlen($response)) . " bytes",
-        "response tokens {$data['eval_count']} [$responseSpeed tokens/s]",
-        "prompt tokens {$data['prompt_eval_count']} [$promptSpeed tokens/s]",
-    ];
+    if ($data['prompt_eval_duration'] ?? null) {
+        $promptSpeed = round($data['prompt_eval_count'] / $data['prompt_eval_duration'] * 1000000000);
+        $responseSpeed = round($data['eval_count'] / $data['eval_duration'] * 1000000000);
+        $stat=[
+            "time " . round(microtime(true) - $timer, 2) . "s",
+            "size " . number_format(strlen($response)) . " bytes",
+            "response tokens {$data['eval_count']} [$responseSpeed tokens/s]",
+            "prompt tokens {$data['prompt_eval_count']} [$promptSpeed tokens/s]",
+        ];
+    } else {
+        $stat=["error"];
+    }
+            
     $api->log->info('ai', "Model $model responded: " . implode(", ", $stat));
     $this->log($data, "Response from $urlSafe (".number_format(strlen($response))." bytes)");
     
