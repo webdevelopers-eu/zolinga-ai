@@ -28,7 +28,8 @@ class AiApi implements ServiceInterface
     * Sends a prompt to the AI model and handles the response in async way.
     * 
     * Request is accepted and processed later. When finished the supplied callback event is triggered
-    * and the response is set to the event object's $event->response->data property.
+    * and the response is set to the event object's $event->response->data property. Any other properties
+    * you set in $event->response will be preserved and available in your callback.
     * 
     * Example usage:
     *  $api->ai->promptAsync(new AiEvent(
@@ -48,6 +49,12 @@ class AiApi implements ServiceInterface
     * as the one you supplied to the \Zolinga\AI\Events\AiEvent constructor. 
     * 
     * You can set your own meta data into $event->response, those will be preserved and dispatched with the event.
+    *
+    * IMPORTANT HOW IT WORKS: 
+    * To process async prompts you need to run the background CLI command: bin/zolinga ai:generate.
+    * As the result your callback will be called from the CLI process, not from your web request which 
+    * means it will not have access to the same request context or variables. Make sure you store
+    * any data you need in the $event->response property so it is available in your callback.
     *
     * @param AiEvent $event The event to handle the AI response.
     * @param array $options Optional parameters to customize the prompt.

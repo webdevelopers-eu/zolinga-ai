@@ -12,13 +12,24 @@ use Zolinga\System\Events\RequestResponseEvent;
 
 class AiGenerator implements ListenerInterface
 {
+    private ?int $timeLimit = 0;
+    private ?int $startTime = null;
+
     /**
     * Handles the generation process triggered by a CLI request.
+    *
+    * It AI-generates contents all $api->ai->promptAsync() requests that are queued in the database.
     *
     * Process all queued AI prompts. If use specified --loop option on command line
     * it will keep processing prompts and watching for new ones indefinitely.
     * 
     * Example: ./bin/zolinga ai:generate --loop
+    *
+    * --loop
+    *    If set, run indefinitely checking for new prompts every 5 seconds.
+    *
+    * --timeLimit=N
+    *    If set, exit approximately after N minutes (will let last prompt finish).
     * 
     * Only one instance of this process can run at a time. If another instance is running
     * it will exit immediately.
@@ -30,17 +41,27 @@ class AiGenerator implements ListenerInterface
         global $api;
         
         $loop = (bool) ($event->request['loop'] ?? false);
+        $this->timeLimit = $event->request['timeLimit'] ?? 0 ? 60 * (int) $event->request['timeLimit'] : null;
+        $this->startTime = time();
         
         if ($api->registry->acquireLock('ai:generate', 0)) {
             do {
                 $this->processQueuedAll();
-            } while ($loop && !sleep(5));
+            } while ($loop && !sleep(5) && !$this->isTimeOver());
             
             $event->setStatus(RequestResponseEvent::STATUS_OK, "Prompts processed.");
             $api->registry->releaseLock('ai:generate');
         } else {
             $event->setStatus(RequestResponseEvent::STATUS_OK, "Another process is already running.");
         }
+    }
+
+    private function isTimeOver(): bool
+    {
+        if ($this->timeLimit && $this->startTime) {
+            return (time() - $this->startTime) >= $this->timeLimit;
+        }
+        return false;
     }
     
     private function processQueuedAll(): void
@@ -64,7 +85,7 @@ class AiGenerator implements ListenerInterface
             if ($count == 1) {
                 $this->processRequest($id);
             }
-        } while ($id);
+        } while ($id && !$this->isTimeOver());
     }
     
     private function processRequest(int $id): void
