@@ -13,7 +13,14 @@ use Zolinga\System\Types\OriginEnum;
 * Processes CMS generative article content. 
 * 
 * Example: <ai-text ai="default" model="my-model">Hello, how are you?</ai-text>
-* 
+*
+* The element will be replaced with the generated article. If the article is not yet generated,
+* a placeholder message will be displayed and the article generation will be queued.
+*
+* Attributes:
+* - ai: Optional. The AI backend to use. Default is "default".
+* - uuid: Optional. The unique identifier of the article. If not provided, hash of the prompt will be used.
+*
 * @author Daniel Sevcik <sevcik@webdevelopers.eu>
 * @date 2025-02-07
 */
@@ -49,7 +56,7 @@ class AiTextElement implements ListenerInterface
         $article = AiTextModel::getTextModel($uuid);
         if ($article) {
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
-            $this->renderArticle($event->output, $article);             
+            $this->renderArticle($event->input, $event->output, $article);             
         } else {
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The server is busy. Please try again later."));
             $this->generateArticle($uuid, $ai, $prompt);
@@ -60,14 +67,33 @@ class AiTextElement implements ListenerInterface
         }
     }
 
-    private function renderArticle(\DOMDocumentFragment $frag, AiTextModel $article): void
+    private function renderArticle(\DOMElement $input, \DOMDocumentFragment $frag, AiTextModel $article): void
     {
         $doc = new \DOMDocument();
         $doc->loadXML($article->contents);
         $body = $doc->getElementsByTagName('article')->item(0);
+
+        $rootTagName = $input->getAttribute('element') ?: 'article';
+        if ($rootTagName !== 'article') {
+            $newRoot = $doc->createElement($rootTagName);
+            $newRoot->append(...$body->childNodes);
+            $doc->documentElement->replaceWith($newRoot);
+            $body = $newRoot;
+        }
+
         if (!$body instanceof \DOMElement) {
             throw new \Exception("Invalid article format: $article");
         }
+
+        // Copy all attributes from the original <ai-text> element
+        // except for "ai" and "uuid"
+        foreach ($input->attributes as $attr) {
+            if (in_array($attr->name, ["ai", "element", "uuid"])) {
+                continue;
+            }
+            $body->setAttribute($attr->name, $attr->value);
+        }
+
         $body->setAttribute("data-text-id", $article->id);
         $frag->appendChild($frag->ownerDocument->importNode($body, true));
     }
