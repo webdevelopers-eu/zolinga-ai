@@ -258,7 +258,7 @@ class WorkflowAtom
                 $prompt = self::replaceVars($this->prompt, $data);
                 $resp = $api->ai->prompt('workflow', $prompt, format: $schema);
 
-                trigger_error("AI response: " . json_encode($resp, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), E_USER_NOTICE);
+                // trigger_error("AI response: " . json_encode($resp, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), E_USER_NOTICE);
 
                 $data = array_merge($data, $resp);
                 $testResult = $this->test($data);
