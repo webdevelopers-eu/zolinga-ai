@@ -66,7 +66,7 @@ class WorkflowAtom
                 case 'download':
                     $this->vars['download'][] = [
                         'name' => $name,
-                        'value' => $value ?: throw new \RuntimeException("The <var> with source='download' must have a value (the URL)"),
+                        'value' => $value,
                         'postprocess' => $node->getAttribute('postprocess') ?: null,
                         'limit' => $node->hasAttribute('limit') ? (int)$node->getAttribute('limit') : null,
                     ];
