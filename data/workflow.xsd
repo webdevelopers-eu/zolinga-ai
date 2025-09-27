@@ -11,6 +11,9 @@
         <xs:attribute name="required" type="wf:yesNoType"/>
         <xs:attribute name="pattern" type="xs:string"/>
         <xs:attribute name="value" type="xs:string"/>
+        <xs:attribute name="source" type="wf:sourceType"/>
+        <xs:attribute name="postprocess" type="wf:postprocessType"/>
+        <xs:attribute name="limit" type="xs:int"/>
     </xs:attributeGroup>
 
     <xs:attributeGroup name="testAttributes">
@@ -24,6 +27,20 @@
     </xs:attributeGroup>
 
     <!-- Simple types -->
+    <xs:simpleType name="sourceType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="ai"/><!-- AI Generated -->
+            <xs:enumeration value="download"/><!-- The value is URL and will be replaced with downloaded source -->
+            <xs:enumeration value="local"/><!-- Custom user-defined/user-supplied - either inherited or defined using @value attribute, default if not specified -->
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="postprocessType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="html2md"/>
+        </xs:restriction>
+    </xs:simpleType>
+
     <xs:simpleType name="yesNoType">
         <xs:restriction base="xs:string">
             <xs:enumeration value="yes"/>

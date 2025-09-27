@@ -13,9 +13,9 @@ class WorkflowAtom
 {
     private DOMXPath $xpath;
     private ?string $prompt = null;
-    private array $generateVariables = [];
-    private array $definedVariables = [];
+    private array $vars = ["ai" => [], "download" => [], "local" => []];
     private array $validators = [];
+    private static array $downloadCache = [];
 
     public function __construct(private DOMElement $atomElement) {
         $this->xpath = new DOMXPath($this->atomElement->ownerDocument);
@@ -43,28 +43,73 @@ class WorkflowAtom
 
     private function extractVariables(): void
     {
-        // Variables <var name="..." [generate="true"] [pattern="..."] [value="..."]>[value]</var>
+        // Variables <var name="..." [source="ai|download|..."] [pattern="..."] [value="..."]>[value]</var>
         // or <var name="..."><option [value="value"]>[value]</option>...</var>
         foreach ($this->xpath->query('./wf:var', $this->atomElement) as $node) {
             /** @var \DOMElement $node */
             $name = $node->getAttribute('name');
             $value = self::getElementValue($node);
-            
-            if ($node->getAttribute('generate') === 'yes') { // AI generated
-                $options = array_map(fn (DOMElement $node) => self::getElementValue($node),
-                    iterator_to_array($this->xpath->query('./wf:option', $node)));
+            $source = $node->getAttribute('source') ?: 'local';
 
-                $this->generateVariables[] = [
-                    "name" => $name,
-                    "pattern" => $node->getAttribute('pattern'),
-                    "required" => $node->getAttribute('required') === 'yes',
-                    "value" => $value,
-                    "options" => $options
-                ];
-            } else {
-                $this->definedVariables[$name] = $value;
+            switch ($source) {
+                case 'ai':
+                    $options = array_map(fn (DOMElement $node) => self::getElementValue($node),
+                        iterator_to_array($this->xpath->query('./wf:option', $node)));
+                    $this->vars['ai'][] = [
+                        "name" => $name,
+                        "pattern" => $node->getAttribute('pattern'),
+                        "required" => $node->getAttribute('required') === 'yes',
+                        "value" => $value,
+                        "options" => $options
+                    ];
+                    break;
+                case 'download':
+                    $this->vars['download'][] = [
+                        'name' => $name,
+                        'value' => $value ?: throw new \RuntimeException("The <var> with source='download' must have a value (the URL)"),
+                        'postprocess' => $node->getAttribute('postprocess') ?: null,
+                        'limit' => $node->hasAttribute('limit') ? (int)$node->getAttribute('limit') : null,
+                    ];
+                    break;
+                case 'local':
+                default: 
+                    $this->vars[$source][$name] = $value;
             }
         }
+    }
+
+    private function download(string $url, array $data): string
+    {
+        global $api;
+
+        try {
+            $url = self::replaceVars($url, $data);
+            $opts = [
+                CURLOPT_HTTPHEADER => [
+                    "accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                    "cache-control: no-cache",
+                    "pragma: no-cache",
+                    "upgrade-insecure-requests: 1",
+                ]
+            ];
+            self::$downloadCache[$url] ??= $api->downloader->download($url, curlOpts: $opts);
+        } catch (\Exception $e) {
+            $api->log->error('ai', "Failed to download URL: $url. Will use keyword 'unknown'. Error: " . $e->getMessage());
+            self::$downloadCache[$url] = "unknown (page $url could not be downloaded: " . $e->getMessage() . ")";
+        }
+
+        return self::$downloadCache[$url];
+    }
+
+    private static function postprocess(string $text, ?string $postprocess, ?int $limit): string {
+        global $api;
+
+        $ret = match ($postprocess) {
+            'html2md' => $api->convert->htmlToMarkdown($text),
+            default => $text,
+        };
+
+        return $limit && $ret ? mb_substr($ret, 0, $limit) : $ret;
     }
 
     private function getJsonSchema(): array
@@ -77,7 +122,7 @@ class WorkflowAtom
             'additionalProperties' => false,
         ];
 
-        foreach($this->generateVariables as $i) {
+        foreach($this->vars['ai'] as $i) {
             if ($i['required']) {
                 $ret['required'][] = $i['name'];
             }
@@ -100,7 +145,11 @@ class WorkflowAtom
                 ($element->childNodes->length ? $element->textContent : null);
     }
 
-    private static function replaceVars(string $string, array $data): string {
+    private static function replaceVars(string|array $string, array $data): string|array {
+        if (is_array($string)) {
+            return array_map(fn($s) => self::replaceVars($s, $data), $string);
+        }
+
         $ret = $string;
         do {
             $count = 0;
@@ -127,7 +176,7 @@ class WorkflowAtom
 
     private function test(array $data): bool {  
         global $api;
-        foreach ($this->generateVariables as $i) {
+        foreach ($this->vars['ai'] as $i) {
             if ($i['required'] && empty($data[$i['name']])) {
                 $api->log->warning('ai', "The required variable '{$i['name']}' is missing: " . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
                 return false;
@@ -149,11 +198,11 @@ class WorkflowAtom
                 // Generate new Atom processor
                 $dom = new DOMDocument;
                 $dom->loadXML('<ai xmlns="http://www.zolinga.org/ai/workflow">
-                    <var name="answer" generate="yes" required="yes">
+                    <var name="answer" source="ai" required="yes">
                         <option value="yes"/>
                         <option value="no"/>
                     </var>
-                    <var name="answerExplanation" generate="yes" required="yes"/>
+                    <var name="answerExplanation" source="ai" required="yes"/>
                 </ai>');
 
                 $dom->documentElement->setAttribute('prompt', $text);
@@ -194,7 +243,12 @@ class WorkflowAtom
         global $api;
         
         // Merge defined variables
-        $data = array_merge($this->definedVariables, $data);
+        $data = self::replaceVars(array_merge($this->vars['local'], $data), $data);
+
+        // Resolve downloads
+        foreach ($this->vars['download'] as ['name' => $name, 'value' => $url, 'postprocess' => $postprocess, 'limit' => $limit]) {
+            $data[$name] = self::postprocess($this->download($url, $data), $postprocess, $limit ?? null);
+        }
 
         if ($this->prompt) {
             $maxAttempts = 5;
@@ -203,6 +257,8 @@ class WorkflowAtom
                 $api->log->info('ai', 'Prompting AI to generate ' . json_encode(array_keys($schema['properties'])));
                 $prompt = self::replaceVars($this->prompt, $data);
                 $resp = $api->ai->prompt('workflow', $prompt, format: $schema);
+
+                trigger_error("AI response: " . json_encode($resp, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), E_USER_NOTICE);
 
                 $data = array_merge($data, $resp);
                 $testResult = $this->test($data);
