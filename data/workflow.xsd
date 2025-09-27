@@ -68,6 +68,7 @@
 
     <xs:complexType name="testType" mixed="true">
         <xs:attributeGroup ref="wf:testAttributes"/>
+        <xs:attribute name="id" type="xs:ID"/>
     </xs:complexType>
 
     <xs:complexType name="itemType" mixed="true">
@@ -92,6 +93,7 @@
             <xs:element name="return" type="wf:returnType" minOccurs="0" maxOccurs="1"/>
         </xs:sequence>
         <xs:attribute name="prompt" type="xs:string"/>
+        <xs:attribute name="id" type="xs:ID"/>
     </xs:complexType>
 
     <!-- Root elements -->
