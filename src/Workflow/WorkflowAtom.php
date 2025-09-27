@@ -112,6 +112,11 @@ class WorkflowAtom
         return $limit && $ret ? mb_substr($ret, 0, $limit) : $ret;
     }
 
+    /**
+     * Generate schema for AI response.
+     *
+     * @return array
+     */
     private function getJsonSchema(): array
     {
         $ret= [
@@ -137,6 +142,26 @@ class WorkflowAtom
             }
         }
 
+        return $ret;
+    }
+
+    /**
+     * Return only properties defined in the schema, check required properties are present
+     * if not, throw an exception.
+     *
+     * @param array $data
+     * @param array $schema
+     * @return array
+     */
+    private function filterPropsBySchema(array $data, array $schema): array {
+        $ret = [];
+        foreach (array_keys($schema['properties']) as $prop) {
+            if (array_key_exists($prop, $data)) {
+                $ret[$prop] = $data[$prop];
+            } elseif (in_array($prop, $schema['required'])) {
+                throw new \RuntimeException("The AI response is missing the required property '$prop': " . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+        }
         return $ret;
     }
 
@@ -260,7 +285,9 @@ class WorkflowAtom
 
                 // trigger_error("AI response: " . json_encode($resp, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), E_USER_NOTICE);
 
-                $data = array_merge($data, $resp);
+                $filteredResp = $this->filterPropsBySchema($resp, $schema);
+                $data = array_merge($data, $filteredResp);
+
                 $testResult = $this->test($data);
                 if (!$testResult) {
                     $api->log->warning('ai', 
