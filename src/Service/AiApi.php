@@ -177,7 +177,7 @@ private function processPrompt(string $ai, string $prompt, ?array $format = null
                 throw new JsonException("Failed to decode the model response - expected array.", 1226);
             }
         } catch (JsonException $e) {
-            $api->logger->error('ai', "Failed to decode the model response: " . $e->getMessage() . " Response was: " . json_encode($answerRaw));
+            $api->logger->error('ai', "Failed to decode the model response: " . $e->getMessage() . " Response was: " . json_encode($answerRaw) . ". Request was: " . json_encode($request, JSON_PRETTY_PRINT));
             throw new JsonException("Failed to decode the model response: " . $e->getMessage(), 1227, $e);
         }
     }
