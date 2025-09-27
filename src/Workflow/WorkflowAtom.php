@@ -94,8 +94,8 @@ class WorkflowAtom
             ];
             self::$downloadCache[$url] ??= $api->downloader->download($url, curlOpts: $opts);
         } catch (\Exception $e) {
-            $api->log->error('ai', "Failed to download URL: $url. Will use keyword 'unknown'. Error: " . $e->getMessage());
-            self::$downloadCache[$url] = "unknown (page $url could not be downloaded: " . $e->getMessage() . ")";
+            $api->log->error('ai', "Failed to download URL: $url. Will use keyword '**unknown**'. Error: " . $e->getMessage());
+            self::$downloadCache[$url] = "**unknown**";
         }
 
         return self::$downloadCache[$url];
