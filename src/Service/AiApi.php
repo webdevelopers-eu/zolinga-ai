@@ -3,6 +3,7 @@
 namespace Zolinga\AI\Service;
 
 use DOMDocument;
+use JsonException;
 use Parsedown;
 use Zolinga\AI\Enum\AiaiEnum;
 use Zolinga\AI\Enum\AiTypeEnum;
@@ -170,9 +171,14 @@ private function processPrompt(string $ai, string $prompt, ?array $format = null
             $answer = preg_replace($search, $replace, $answer);
         }
     } else {
-        $answer = json_decode($answerRaw, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-        if (!is_array($answer)) {
-            throw new \Exception("Failed to decode the model response: " . json_encode($answerRaw), 1226);
+        try {
+            $answer = json_decode($answerRaw, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+            if (!is_array($answer)) {
+                throw new JsonException("Failed to decode the model response: " . json_encode($answerRaw), 1226);
+            }
+        } catch (JsonException $e) {
+            $api->logger->error('ai', "Failed to decode the model response: " . $e->getMessage() . " Response was: " . json_encode($answerRaw));
+            throw new JsonException("Failed to decode the model response: " . $e->getMessage(), 1226, $e);
         }
     }
     
