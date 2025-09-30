@@ -126,7 +126,7 @@ public function isPromptAsyncQueued(string $uuid): bool
 * @param int $retry The number of times to retry the request in case of failure.
 * @return array|string The response from the AI model - if the $format is set to "json" or JSON schema, the response is decoded array, otherwise it is a string.
 */
-public function prompt(string $ai, string $prompt, ?array $format = null, ?array $options = null, int $retry = 3): array|string
+public function prompt(string $ai, string $prompt, ?array $format = null, ?array $options = null, int $retry = 6): array|string
 {
     while ($retry-- > 0) {
         try {
@@ -156,6 +156,7 @@ private function processPrompt(string $ai, string $prompt, ?array $format = null
     
     if ($format !== null) {
         $request['format'] = $format;
+        $request['system'].= " Return only valid JSON format that exactly matches the schema. Do not add text, tabs, or comments. If you cannot comply, return an empty object.";
     }
     if ($options !== null) {
         $request['options'] = $options;
@@ -214,7 +215,7 @@ private function getBackendConfig(string $ai): array
  * @return array|string
  * @throws \Exception If the workflow cannot be processed.
  */
-public function runWorkflow(DOMDocument $workflow, array $data = []): array | string
+public function runWorkflow(DOMDocument $workflow, array $data): array | string
 {
     // Check
     if ($workflow->schemaValidate("module://zolinga-ai/data/workflow.xsd") === false) {
@@ -236,7 +237,7 @@ public function runWorkflow(DOMDocument $workflow, array $data = []): array | st
  * @return array|string
  * @throws \Exception If the file does not exist or cannot be loaded.
  */
-public function runWorkflowFile(string $file, array $data = []): array | string
+public function runWorkflowFile(string $file, array $data): array | string
 {
     if (!file_exists($file)) {
         throw new \Exception("Workflow file '$file' does not exist.", 1230);
@@ -314,9 +315,18 @@ private function httpRequest(string $url, array $request, string $model): array
     }
     
     $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR)
-    or throw new \Exception("Failed to decode the response: $response", 1227);
-    
-    if ($data['prompt_eval_duration'] ?? null) {
+        or throw new \Exception("Failed to decode the response: $response", 1227);
+
+    if (!is_array($data)) {
+        throw new \Exception("The response from the AI model is not a valid JSON object. Expected array, got " . gettype($data) . ": $response, request: $raw", 1228);
+    } elseif (($data['done'] ?? null) === false) {
+        $api->log->warning('ai', "The response from the AI model is not marked as done. Response: " . json_encode($data) . " Request: $raw");
+        $api->log->info('ai', "💡 Sometimes JSON Schema validation pattern like ^.{10,100}$ causes AI to cut off the response. Check if you can ease JSON Schema requirements.");
+        throw new \Exception("The response from the AI model is not marked as done.", 1230);
+    } elseif (!($data['prompt_eval_duration'] ?? null)) {
+        $api->log->warning('ai', "The response from the AI model is missing required statistics. Response: " . json_encode($data) . " Request: $raw");
+        throw new \Exception("The response from the AI model is missing required statistics.", 12231);
+    } else {
         $promptSpeed = round($data['prompt_eval_count'] / $data['prompt_eval_duration'] * 1000000000);
         $responseSpeed = round($data['eval_count'] / $data['eval_duration'] * 1000000000);
         $stat=[
@@ -325,8 +335,6 @@ private function httpRequest(string $url, array $request, string $model): array
             "response tokens {$data['eval_count']} [$responseSpeed tokens/s]",
             "prompt tokens {$data['prompt_eval_count']} [$promptSpeed tokens/s]",
         ];
-    } else {
-        throw new \Exception("The response from the AI model is missing required statistics: " . json_encode($response), 1229);
     }
             
     $api->log->info('ai', "Model $model responded: " . implode(", ", $stat));

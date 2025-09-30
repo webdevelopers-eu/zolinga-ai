@@ -78,9 +78,13 @@ class WorkflowAtom
         }
     }
 
-    private function download(string $url, array $data): string
+    private function download(?string $url, array $data): string
     {
         global $api;
+
+        if (!$url) {
+            return "**unknown**";
+        }
 
         try {
             $url = self::replaceVars($url, $data);
@@ -170,9 +174,11 @@ class WorkflowAtom
                 ($element->childNodes->length ? $element->textContent : null);
     }
 
-    private static function replaceVars(string|array $string, array $data): string|array {
+    private static function replaceVars(string|array|null $string, array $data): string|array|null {
         if (is_array($string)) {
-            return array_map(fn($s) => self::replaceVars($s, $data), $string);
+            return array_map(fn($s) => self::replaceVars($s ?? '', $data), $string);
+        } elseif ($string === null) {
+            return null;
         }
 
         $ret = $string;
@@ -272,7 +278,8 @@ class WorkflowAtom
 
         // Resolve downloads
         foreach ($this->vars['download'] as ['name' => $name, 'value' => $url, 'postprocess' => $postprocess, 'limit' => $limit]) {
-            $data[$name] = self::postprocess($this->download($url, $data), $postprocess, $limit ?? null);
+            $url = self::replaceVars($data[$name] ?? $url, $data);
+            $data[$name] = $url ? self::postprocess($this->download($url, $data), $postprocess, $limit ?? null) : null;
         }
 
         if ($this->prompt) {
