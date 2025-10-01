@@ -87,7 +87,7 @@ class WorkflowAtom
         }
 
         try {
-            $url = self::replaceVars($url, $data);
+            $url = StringManipulator::replaceVars($url, $data);
             $opts = [
                 CURLOPT_HTTPHEADER => [
                     "accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -103,17 +103,6 @@ class WorkflowAtom
         }
 
         return self::$downloadCache[$url];
-    }
-
-    private static function postprocess(string $text, ?string $postprocess, ?int $limit): string {
-        global $api;
-
-        $ret = match ($postprocess) {
-            'html2md' => $api->convert->htmlToMarkdown($text),
-            default => $text,
-        };
-
-        return $limit && $ret ? mb_substr($ret, 0, $limit) : $ret;
     }
 
     /**
@@ -174,37 +163,6 @@ class WorkflowAtom
                 ($element->childNodes->length ? $element->textContent : null);
     }
 
-    private static function replaceVars(string|array|null $string, array $data): string|array|null {
-        if (is_array($string)) {
-            return array_map(fn($s) => self::replaceVars($s ?? '', $data), $string);
-        } elseif ($string === null) {
-            return null;
-        }
-
-        $ret = $string;
-        do {
-            $count = 0;
-            $ret = preg_replace_callback(
-                '/\$\{(\w+)\}/', 
-                function ($matches) use (&$count, $data, $ret) {
-                    global $api;
-
-                    $varName = $matches[1];
-                    if (isset($data[$varName])) {
-                        $count++;
-                        return $data[$varName];
-                    } else {
-                        $api->log->warning('ai', "Variable '{$varName}' not found in data. Text: \"$ret\". Supported vars: " . json_encode(array_keys($data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                        return $matches[0];
-                    }
-                }, 
-                $ret
-            );
-        } while ($count > 0); // recursive
-
-        return $ret;
-    }
-
     private function test(array $data): bool {  
         global $api;
         foreach ($this->vars['ai'] as $i) {
@@ -219,7 +177,7 @@ class WorkflowAtom
         }
 
         foreach ($this->validators as $validator) {
-            $text = $this->replaceVars($validator['text'], $data);
+            $text = StringManipulator::replaceVars($validator['text'], $data);
 
             if ($validator['pattern']) {
                 $testResult = preg_match("/{$validator['pattern']}/", $text) ? 'yes' : 'no';
@@ -257,7 +215,7 @@ class WorkflowAtom
 
         $items = $this->xpath->query('./wf:item', $el);
         if ($items->length === 0) {
-            return self::replaceVars($this->getElementValue($el), $data);
+            return StringManipulator::replaceVars($this->getElementValue($el), $data);
         } else {
             $ret = [];
             foreach ($items as $item) {
@@ -269,17 +227,16 @@ class WorkflowAtom
         }
     }
 
-    public function process(array $data = []): array|string
-    {
+    public function process(array $data = []): array|string {
         global $api;
         
         // Merge defined variables
-        $data = self::replaceVars(array_merge($this->vars['local'], $data), $data);
+        $data = StringManipulator::replaceVars(array_merge($this->vars['local'], $data), $data);
 
         // Resolve downloads
         foreach ($this->vars['download'] as ['name' => $name, 'value' => $url, 'postprocess' => $postprocess, 'limit' => $limit]) {
-            $url = self::replaceVars($data[$name] ?? $url, $data);
-            $data[$name] = $url ? self::postprocess($this->download($url, $data), $postprocess, $limit ?? null) : null;
+            $url = StringManipulator::replaceVars($data[$name] ?? $url, $data);
+            $data[$name] = $url ? StringManipulator::postprocess($this->download($url, $data), $postprocess, $limit ?? null) : null;
         }
 
         if ($this->prompt) {
@@ -287,7 +244,7 @@ class WorkflowAtom
             do {
                 $schema = $this->getJsonSchema();
                 $api->log->info('ai', 'Prompting AI to generate ' . json_encode(array_keys($schema['properties'])));
-                $prompt = self::replaceVars($this->prompt, $data);
+                $prompt = StringManipulator::replaceVars($this->prompt, $data);
                 $resp = $api->ai->prompt('workflow', $prompt, format: $schema);
 
                 // trigger_error("AI response: " . json_encode($resp, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), E_USER_NOTICE);
