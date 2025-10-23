@@ -170,8 +170,9 @@ class WorkflowAtom
                 $api->log->warning('ai', "The required variable '{$i['name']}' is missing: " . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
                 return false;
             }
-            if ($i['pattern'] && !preg_match("/{$i['pattern']}/s", $data[$i['name']])) {
-                $api->log->warning('ai', "The variable '{$i['name']}' does not match the required pattern {$i['pattern']}: {$data[$i['name']]}");
+            $pattern = "/" . addcslashes($i['pattern'], '/') . "/s";
+            if ($i['pattern'] && !preg_match($pattern, $data[$i['name']])) {
+                $api->log->warning('ai', "The variable '{$i['name']}' does not match the required pattern $pattern: {$data[$i['name']]}");
                 return false;
             }
         }
@@ -180,8 +181,9 @@ class WorkflowAtom
             $text = StringManipulator::replaceVars($validator['text'], $data);
 
             if ($validator['pattern']) {
-                $testResult = preg_match("/{$validator['pattern']}/", $text) ? 'yes' : 'no';
-                $debugInfo = "pattern {$validator['pattern']}";
+                $pattern = "/" . addcslashes($validator['pattern'], '/') . "/";
+                $testResult = preg_match($pattern, $text) ? 'yes' : 'no';
+                $debugInfo = "pattern $pattern";
                 $testResultInfo = $testResult === 'yes' ? "matched" : "not matched";
             } else {
                 // Generate new Atom processor
