@@ -11,6 +11,7 @@ Configure the AI backends in your Zolinga configuration. The module supports onl
                        "type": "ollama",
                        "url": "http://login:password@127.0.0.1:3000/api/",
                        "model": "deepseek-r1:8b",
+                       "think": false,
                        "replace": [{"search": "/^<think>.*?<\\/think>/", "replace": ""}]
                    },
                    "fast": {
@@ -27,4 +28,5 @@ In the example above
 - `type` is the backend type. Currently only `ollama` is supported.
 - `url` is the base URL of the backend API endpoint.
 - `model` is the model to use for generating the content.
+- `think` enables or disables the model's extended thinking mode (maps to Ollama's `think` parameter). Default: `false`.
 - `replace` is an array of search and replace rules to apply to the generated content. The rules are applied in the order they are defined.

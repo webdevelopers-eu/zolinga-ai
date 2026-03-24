@@ -69,7 +69,9 @@
           "type": "ollama",
           "url": "http://login:password@127.0.0.1:3000/api",
           "model": "llama3.2:1b",
-          "replace": [{"search": "/^<think>.*?<\\/think>\\s*/s", "replace": ""}]
+          "replace": [{"search": "/^.*?<\\/think>\\s*/s", "replace": ""}],
+          "systemPrompt": false,
+          "think": false
         }
       }
     }

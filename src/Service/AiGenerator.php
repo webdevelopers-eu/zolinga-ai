@@ -129,6 +129,7 @@ class AiGenerator implements ListenerInterface
         $prompt = $event->request['prompt'];
         $format = $event->request['format'] ?: null;
 
+        $api->log->info('ai', "Processing request UUID \"{$event->uuid}\" ({$id}) with AI '{$ai}'");
         $response = $api->ai->prompt($ai, $prompt, $format);
         $api->db->query("UPDATE aiEvents SET response = ? WHERE id = ?", json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), $id);
         $event->response['data'] = $response;

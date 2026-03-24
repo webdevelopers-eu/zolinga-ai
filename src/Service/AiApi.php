@@ -151,7 +151,7 @@ private function processPrompt(string $ai, string $prompt, ?array $format = null
         'model' => $model,
         'prompt' => $prompt,
         'stream' => false,
-        'system' => $api->config['ai']['systemPrompt'] ?: "You are a very capable content creator.",
+        'system' => $config['systemPrompt'] ?: $api->config['ai']['systemPrompt'] ?: "You are a very capable content creator.",
     ];
     
     if ($format !== null) {
@@ -161,11 +161,16 @@ private function processPrompt(string $ai, string $prompt, ?array $format = null
     if ($options !== null) {
         $request['options'] = $options;
     }
+    if (isset($config['think'])) {
+        $request['think'] = (bool) $config['think'];
+    }
     
     $data = $this->httpRequest($url, $request, $model);
     $answerRaw = $data['response'] 
     or throw new \Exception("Unexpected answer from the model: ".json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 1225);
-    
+
+    // $api->log->info('ai', "Received response from $model: " . json_encode($answerRaw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+
     if ($format === null) { // then it is serialized json
         $answer = $answerRaw;
         foreach($config['replace'] ?: [] as ['search' => $search, 'replace' => $replace]) {
