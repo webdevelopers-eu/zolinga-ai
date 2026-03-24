@@ -19,6 +19,25 @@ Example:
 - `element`: The HTML element type to use for the generated content. Default: `article`.
 - Additional attributes: All other attributes (such as `class`, `style`, `data-*`, etc.) will be copied to the output element.
 
+## Nested Elements
+
+The `<ai-text>` element can contain nested CMS content elements. Before the prompt is extracted and processed by the AI backend, any nested elements are first fully expanded by the CMS parser. The resulting plain text (after stripping scripts and markup) is then used as the prompt.
+
+This allows you to dynamically construct prompts using other content elements:
+
+```html
+<ai-text ai="default">
+    Write a summary for this post: <autoblog-post data-field="title" />
+    Context: <my-data-element />
+</ai-text>
+```
+
+The expansion order is:
+1. Nested elements inside `<ai-text>` are expanded first by the CMS parser.
+2. Scripts are stripped from the expanded content.
+3. The remaining text content is used as the AI prompt.
+4. The `<ai-text>` element itself is then processed and replaced with the generated article.
+
 ## Processing
 
 The first time the `<ai-text>` element is rendered, the system queues request for backend to generate the article. In the meantime the element will display an error messsage that the server is busy and the user should try again later. Once the article is generated, the element will display the article content. 

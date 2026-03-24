@@ -40,7 +40,16 @@ class AiTextElement implements ListenerInterface
         global $api;
         
         $ai = $event->input->getAttribute("ai") ?: "default";
-        $prompt = $event->input->textContent;
+        $api->cmsParser->parse($event->input, true);
+
+        $contentDom = new \DOMDocument();
+        $contentDom->appendChild($contentDom->importNode($event->input, true));
+        // Remove all scripts
+        $scripts = $contentDom->getElementsByTagName("script");
+        for ($i = $scripts->length - 1; $i >= 0; $i--) {
+            $scripts->item($i)?->parentNode->removeChild($scripts->item($i));
+        }
+        $prompt = $contentDom->textContent;
         
         // Erase the contents of the element to be safe
         $event->output->nodeValue = "";
@@ -100,7 +109,8 @@ class AiTextElement implements ListenerInterface
     
     private function displayError(\DOMDocumentFragment $frag, string $message): void
     {
-        $errorMsgElement = $frag->appendChild($frag->ownerDocument->createElement("article"));
+        $errorMsgElement = $frag->ownerDocument->createElement("article");
+        $frag->appendChild($errorMsgElement);
         $errorMsgElement->setAttribute("data-text-id", "");
         $errorMsgElement->setAttribute("class", "zolinga-text warning");
         $errorMsgElement->appendChild(new \DOMText(dgettext("zolinga-ai", $message)));
