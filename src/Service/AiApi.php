@@ -297,7 +297,7 @@ private function httpRequest(string $url, array $request, string $model): array
     $raw = json_encode($request, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
     
     $timer = microtime(true);
-    $api->log->info('ai', "Asking $model at $urlSafe (".number_format(strlen($raw))." bytes)...");
+    $api->log->info('ai', "Asking $model ".($request['think'] ? "(thinking) " : "")."at $urlSafe (".number_format(strlen($raw))." bytes)...");
     $response = file_get_contents($url, false, stream_context_create([
         'http' => [
             'method' => 'POST',
