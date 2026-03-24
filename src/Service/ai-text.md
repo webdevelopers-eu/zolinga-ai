@@ -1,7 +1,7 @@
 ## Syntax
 
 ```html
-<ai-text [ai="{AI_ai}"] [uuid="{UUID}"]>{PROMPT}</ai-text>
+<ai-text [ai="{AI_ai}"] [uuid="{UUID}"] [print-only="true"]>{PROMPT}</ai-text>
 ```
 
 Example:
@@ -16,6 +16,7 @@ Example:
 
 - `ai`: The ai to use for generating the article. The ais are defined in your [configuration](:Zolinga Core:Configuration)'s key. Default: `default`.
 - `uuid`: The UUID of the article. If the UUID is not provided, the system will generate a new UUID hash for the article from the prompt, model, and ai. AI generated content is stored in the database under the UUID. Therefore, if you want to display the same article multiple times, you should provide the same UUID.
+- `print-only`: If set to `true`, the element will only print the prompt text without sending it to the ai for processing. This can be useful for debugging or when you want to display the prompt itself on the page.
 
 ## ai Configuration
 

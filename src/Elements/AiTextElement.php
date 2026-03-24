@@ -50,6 +50,14 @@ class AiTextElement implements ListenerInterface
             $scripts->item($i)?->parentNode->removeChild($scripts->item($i));
         }
         $prompt = $contentDom->textContent;
+
+        if ($event->input->hasAttribute('print-only')) {
+            $pre = $event->output->ownerDocument->createElement("pre");
+            $pre->appendChild($event->output->ownerDocument->createTextNode($prompt));
+            $event->output->appendChild($pre);
+            $event->setStatus(ContentElementEvent::STATUS_OK, "Printed prompt only.");
+            return;
+        }
         
         // Erase the contents of the element to be safe
         $event->output->nodeValue = "";
