@@ -174,7 +174,14 @@ private function processPrompt(string $ai, string $prompt, ?array $format = null
     if ($format === null) { // then it is serialized json
         $answer = $answerRaw;
         foreach($config['replace'] ?: [] as ['search' => $search, 'replace' => $replace]) {
-            $answer = preg_replace($search, $replace, $answer);
+            $newAnswer = preg_replace($search, $replace, $answer);
+            if ($newAnswer) {
+                $answer = $newAnswer;
+            } else {
+                $api->log->error('ai', "Failed to apply regex replacement on the model response. Search: " . json_encode($search, JSON_UNESCAPED_SLASHES) . 
+                    " Replace: " . json_encode($replace, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . 
+                    " Response was: " . json_encode($answerRaw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
         }
     } else {
         try {
