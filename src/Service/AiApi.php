@@ -329,24 +329,26 @@ private function httpRequest(string $url, array $request, string $model): array
     $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR)
         or throw new \Exception("Failed to decode the response: $response", 1227);
 
+    $stat=[
+            "time " . round(microtime(true) - $timer, 2) . "s",
+            "size " . number_format(strlen($response)) . " bytes",
+        ];
+
     if (!is_array($data)) {
         throw new \Exception("The response from the AI model is not a valid JSON object. Expected array, got " . gettype($data) . ": $response, request: $raw", 1228);
     } elseif (($data['done'] ?? null) === false) {
         $api->log->warning('ai', "The response from the AI model is not marked as done. Response: " . json_encode($data) . " Request: $raw");
         $api->log->info('ai', "💡 Sometimes JSON Schema validation pattern like ^.{10,100}$ causes AI to cut off the response. Check if you can ease JSON Schema requirements.");
         throw new \Exception("The response from the AI model is not marked as done.", 1230);
+    } elseif (!($data['prompt_eval_duration'] ?? null) && preg_match('/:cloud/', $model)) { // no statc cloud-based model
     } elseif (!($data['prompt_eval_duration'] ?? null)) {
         $api->log->warning('ai', "The response from the AI model is missing required statistics. Response: " . json_encode($data) . " Request: $raw");
         throw new \Exception("The response from the AI model is missing required statistics.", 12231);
     } else {
         $promptSpeed = round($data['prompt_eval_count'] / $data['prompt_eval_duration'] * 1000000000);
         $responseSpeed = round($data['eval_count'] / $data['eval_duration'] * 1000000000);
-        $stat=[
-            "time " . round(microtime(true) - $timer, 2) . "s",
-            "size " . number_format(strlen($response)) . " bytes",
-            "response tokens {$data['eval_count']} [$responseSpeed tokens/s]",
-            "prompt tokens {$data['prompt_eval_count']} [$promptSpeed tokens/s]",
-        ];
+        $stat[]="response tokens {$data['eval_count']} [$responseSpeed tokens/s]";
+        $stat[]="prompt tokens {$data['prompt_eval_count']} [$promptSpeed tokens/s]";
     }
             
     $api->log->info('ai', "Model $model responded: " . implode(", ", $stat));
