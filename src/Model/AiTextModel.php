@@ -104,9 +104,12 @@ class AiTextModel
                 /** @var DOMNode $node */
                 $href = $node->getAttribute('href');
                 if (!$api->url->isValidURL($href)) { // strip invalid links
+                    $node->parentNode->insertBefore($doc->createComment(
+                        "START: removed invalid link: " . str_replace('--', '- -', $href)), $node);
                     while ($node->firstChild) {
                         $node->parentNode->insertBefore($node->firstChild, $node);
                     }
+                    $node->parentNode->insertBefore($doc->createComment("END"), $node);
                     $node->parentNode->removeChild($node);
                 }
             }
