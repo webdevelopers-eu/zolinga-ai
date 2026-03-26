@@ -1,7 +1,7 @@
 ## Syntax
 
 ```html
-<ai-text [ai="{AI_BACKEND}"] [uuid="{UUID}"] [element="{ELEMENT_TYPE}"] [remove-invalid-links="true"] [other_attributes...]>{PROMPT}</ai-text>
+<ai-text [ai="{AI_BACKEND}"] [uuid="{UUID}"] [element="{ELEMENT_TYPE}"] [allow-generate-from="{IP_LIST}"] [remove-invalid-links="true"] [other_attributes...]>{PROMPT}</ai-text>
 ```
 
 Example:
@@ -12,11 +12,20 @@ Example:
 </ai-text>
 ```
 
+Restricted generation (only your office IP and localhost can trigger generation):
+
+```html
+<ai-text ai="default" allow-generate-from="203.0.113.10,10.0.0.0/8">
+    Write a product description for our new widget.
+</ai-text>
+```
+
 ## Attributes
 
 - `ai`: The backend to use for generating the article. The backends are defined in your [configuration](:Zolinga Core:Configuration)'s key. Default: `default`.
 - `uuid`: The UUID of the article. If the UUID is not provided, the system will generate a new UUID hash for the article from the prompt, model, and backend. AI generated content is stored in the database under the UUID. Therefore, if you want to display the same article multiple times, you should provide the same UUID.
 - `element`: The HTML element type to use for the generated content. Default: `article`.
+- `allow-generate-from`: A comma-separated list of IP addresses or CIDR ranges that are allowed to **trigger** AI content generation. Requests from IPs not on the list will receive a 404 response instead of queuing a generation job. Already-generated content is served to everyone regardless of this attribute. If the attribute is omitted, any visitor can trigger generation. Uses `$api->network->matchCidr()` for matching, so both IPv4 and IPv6 are supported. Example: `"109.164.101.75,10.0.0.0/8,2001:db8::/32"`.
 - `remove-invalid-links`: If set to `true`, invalid links found in the generated article will be removed before the article is saved. Use this when you want link cleanup during article generation.
 - Additional attributes: All other attributes (such as `class`, `style`, `data-*`, etc.) will be copied to the output element.
 
@@ -41,7 +50,9 @@ The expansion order is:
 
 ## Processing
 
-The first time the `<ai-text>` element is rendered, the system queues request for backend to generate the article. In the meantime the element will display an error messsage that the server is busy and the user should try again later. Once the article is generated, the element will display the article content. 
+The first time the `<ai-text>` element is rendered, the system queues a request for the backend to generate the article. In the meantime the element will display a message that the server is busy and the user should try again later (HTTP 503 with `Retry-After: 600`). Once the article is generated, the element will display the article content.
+
+When `allow-generate-from` is set, only requests originating from the listed IPs or CIDR ranges can trigger a new generation job. Any other visitor whose request arrives before the article exists will receive a 404 response. This prevents arbitrary public visitors from flooding the generation queue — useful for AI-generated pages that are crawled or indexed by search engines before your content is ready. Once the article has been generated it is served to all visitors normally.
 
 If `remove-invalid-links="true"` is set, link validation and cleanup happens during article generation before the generated content is stored.
 
