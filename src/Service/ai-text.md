@@ -1,7 +1,7 @@
 ## Syntax
 
 ```html
-<ai-text [ai="{AI_ai}"] [uuid="{UUID}"] [print-only="true"]>{PROMPT}</ai-text>
+<ai-text [ai="{AI_ai}"] [uuid="{UUID}"] [print-only="true"] [remove-invalid-links="true"]>{PROMPT}</ai-text>
 ```
 
 Example:
@@ -17,6 +17,7 @@ Example:
 - `ai`: The ai to use for generating the article. The ais are defined in your [configuration](:Zolinga Core:Configuration)'s key. Default: `default`.
 - `uuid`: The UUID of the article. If the UUID is not provided, the system will generate a new UUID hash for the article from the prompt, model, and ai. AI generated content is stored in the database under the UUID. Therefore, if you want to display the same article multiple times, you should provide the same UUID.
 - `print-only`: If set to `true`, the element will only print the prompt text without sending it to the ai for processing. This can be useful for debugging or when you want to display the prompt itself on the page.
+- `remove-invalid-links`: If set to `true`, invalid links found in generated content will be removed before the article is saved.
 
 ## ai Configuration
 
@@ -46,6 +47,8 @@ Currently only Ollama ai API is supported. The example of the configuration of 2
 ## Processing
 
 The first time the `<ai-text>` element is rendered, the system queues request for ai to generate the article. In the meantime the element will display an error messsage that the server is busy and the user should try again later. Once the article is generated, the element will display the article content. 
+
+If `remove-invalid-links="true"` is set, the generated article is cleaned up before it is stored.
 
 In order to generate the article on the background run the `./bin/zolinga ai:generate` command. You can run it regularly from the cron job to process all queued articles. The process will finish all queued articles and exit. Or you can run it with the `--loop` option to run it in the loop continuously.
 

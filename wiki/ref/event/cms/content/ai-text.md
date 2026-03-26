@@ -1,13 +1,13 @@
 ## Syntax
 
 ```html
-<ai-text [ai="{AI_BACKEND}"] [uuid="{UUID}"] [element="{ELEMENT_TYPE}"] [other_attributes...]>{PROMPT}</ai-text>
+<ai-text [ai="{AI_BACKEND}"] [uuid="{UUID}"] [element="{ELEMENT_TYPE}"] [remove-invalid-links="true"] [other_attributes...]>{PROMPT}</ai-text>
 ```
 
 Example:
 
 ```html
-<ai-text ai="default">
+<ai-text ai="default" remove-invalid-links="true">
     Write a blog post about the Zolinga platform.
 </ai-text>
 ```
@@ -17,6 +17,7 @@ Example:
 - `ai`: The backend to use for generating the article. The backends are defined in your [configuration](:Zolinga Core:Configuration)'s key. Default: `default`.
 - `uuid`: The UUID of the article. If the UUID is not provided, the system will generate a new UUID hash for the article from the prompt, model, and backend. AI generated content is stored in the database under the UUID. Therefore, if you want to display the same article multiple times, you should provide the same UUID.
 - `element`: The HTML element type to use for the generated content. Default: `article`.
+- `remove-invalid-links`: If set to `true`, invalid links found in the generated article will be removed before the article is saved. Use this when you want link cleanup during article generation.
 - Additional attributes: All other attributes (such as `class`, `style`, `data-*`, etc.) will be copied to the output element.
 
 ## Nested Elements
@@ -42,6 +43,8 @@ The expansion order is:
 
 The first time the `<ai-text>` element is rendered, the system queues request for backend to generate the article. In the meantime the element will display an error messsage that the server is busy and the user should try again later. Once the article is generated, the element will display the article content. 
 
+If `remove-invalid-links="true"` is set, link validation and cleanup happens during article generation before the generated content is stored.
+
 ## Output Structure
 
 When the article is generated, the content will be wrapped in an `<article>` element (or the element specified by the `element` attribute). The output element will have:
@@ -51,7 +54,7 @@ When the article is generated, the content will be wrapped in an `<article>` ele
 
 Example output:
 ```html
-<article data-text-id="ai:article:a1b2c3d4e5f6" class="my-custom-class">
+<article data-text-id="ai:article:a1b2c3d4e5f6" class="my-custom-class" remove-invalid-links="true">
   <h1>Generated Title</h1>
   <p>Generated content paragraph...</p>
 </article>
