@@ -341,6 +341,9 @@ private function httpRequest(string $url, array $request, string $model): array
         $api->log->info('ai', "💡 Sometimes JSON Schema validation pattern like ^.{10,100}$ causes AI to cut off the response. Check if you can ease JSON Schema requirements.");
         throw new \Exception("The response from the AI model is not marked as done.", 1230);
     } elseif (!($data['prompt_eval_duration'] ?? null) && preg_match('/:cloud/', $model)) { // no statc cloud-based model
+        $stat[]="cloud-based model";
+        $stat[]="response tokens {$data['eval_count']}";
+        $stat[]="prompt tokens {$data['prompt_eval_count']}";
     } elseif (!($data['prompt_eval_duration'] ?? null)) {
         $api->log->warning('ai', "The response from the AI model is missing required statistics. Response: " . json_encode($data) . " Request: $raw");
         throw new \Exception("The response from the AI model is missing required statistics.", 12231);
