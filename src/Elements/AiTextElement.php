@@ -12,7 +12,7 @@ use Zolinga\System\Types\OriginEnum;
 /**
 * Processes CMS generative article content. 
 * 
-* Example: <ai-text ai="default" model="my-model">Hello, how are you?</ai-text>
+* Example: <ai-text ai="default" model="my-model" remove-invalid-links="true">Hello, how are you?</ai-text>
 *
 * The element will be replaced with the generated article. If the article is not yet generated,
 * a placeholder message will be displayed and the article generation will be queued.
@@ -20,6 +20,7 @@ use Zolinga\System\Types\OriginEnum;
 * Attributes:
 * - ai: Optional. The AI backend to use. Default is "default".
 * - uuid: Optional. The unique identifier of the article. If not provided, hash of the prompt will be used.
+* - remove-invalid-links: Optional. If set to "true", invalid links in the generated article will be removed.
 *
 * @author Daniel Sevcik <sevcik@webdevelopers.eu>
 * @date 2025-02-07
@@ -76,7 +77,8 @@ class AiTextElement implements ListenerInterface
             $this->renderArticle($event->input, $event->output, $article);             
         } else {
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The server is busy. Please try again later."));
-            $this->generateArticle($uuid, $ai, $prompt);
+            $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
+            $this->generateArticle($uuid, $ai, $prompt, $removeInvalidLinks);
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found.");
             // Throw HTTP error 503 with Retry-After: 600
             header("Retry-After: 600");
@@ -131,11 +133,12 @@ class AiTextElement implements ListenerInterface
     * and processed by the $this->onGenerateArticle() method.
     *
     * @param string $uuid The unique identifier of the article.
-    * @param mixed $ai The backend to use.
-    * @param mixed $prompt The prompt to use.
+    * @param string $ai The backend to use.
+    * @param string $prompt The prompt to use.
+    * @param bool $removeInvalidLinks Whether to validate links in the article. If invalid link is found, it will be removed.
     * @return void
     */
-    private function generateArticle(string $uuid, $ai, $prompt): void
+    private function generateArticle(string $uuid, string $ai, string $prompt, bool $removeInvalidLinks = false): void
     {
         global $api;
         
@@ -146,7 +149,8 @@ class AiTextElement implements ListenerInterface
         $event = new AiEvent("ai:article:generated", OriginEnum::INTERNAL, [
             'ai' => $ai,
             'prompt' => $prompt,
-            'triggerURL' => $api->url->getCurrentUrl()
+            'triggerURL' => $api->url->getCurrentUrl(),
+            'removeInvalidLinks' => $removeInvalidLinks
         ]);
         $event->uuid = $uuid;
         
@@ -170,9 +174,11 @@ class AiTextElement implements ListenerInterface
         $uuid = $event->uuid;
         $contents = $event->response['data'];
         $triggerURL = $event->request['triggerURL'] ?? null;
+        $removeInvalidLinks = $event->request['removeInvalidLinks'] ?? false;
         
         $article = AiTextModel::getTextModel($uuid) ?: AiTextModel::createTextModel($uuid, $contents, $triggerURL);
-        $article->contents = $contents;
+        $article->setContents($contents, $removeInvalidLinks); // this setter converts Markdown to HTML
+
         $article->save();
         
         $event->setStatus(AiEvent::STATUS_OK, "Article saved.");

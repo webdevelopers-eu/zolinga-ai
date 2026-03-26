@@ -85,10 +85,9 @@ class AiTextModel
      * Sets the article contents after converting it to HTML.
      * 
      * @param string $contents The article contents.
-     * @param ResponseTextFormat $format The format of the contents.
      * @return void
      */
-    public function setContents(string $contents, ResponseTextFormat $format = ResponseTextFormat::MARKDOWN) {
+    public function setContents(string $contents, bool $removeInvalidLinks = false): void {
         global $api;
 
         $contents = trim(preg_replace('/<think>.*?<\/think>/s', '', $contents));
@@ -98,6 +97,21 @@ class AiTextModel
         $articleElement = $doc->getElementsByTagName('article')->item(0);
         $articleElement->setAttribute('class', 'zolinga-text');
         $articleElement->setAttribute('data-text-id', $this->id);
+
+        if ($removeInvalidLinks) {
+            $xpath = new \DOMXPath($doc);
+            foreach ($xpath->query('//a[@href]') as $node) {
+                /** @var DOMNode $node */
+                $href = $node->getAttribute('href');
+                if (!$api->url->isValidURL($href)) { // strip invalid links
+                    while ($node->firstChild) {
+                        $node->parentNode->insertBefore($node->firstChild, $node);
+                    }
+                    $node->parentNode->removeChild($node);
+                }
+            }
+        }
+
         $contents = $doc->saveXML();  
 
         $this->contents = $contents;

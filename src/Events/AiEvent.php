@@ -17,7 +17,8 @@ class AiEvent extends RequestResponseEvent {
     private const REQUEST_DEFAULTS = [
         'ai' => 'default',
         'prompt' => '',
-        'format' => null
+        'format' => null,
+        'removeInvalidLinks' => false,
     ];
 
     private const REQUEST_REQUIRED = [
