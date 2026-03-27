@@ -87,7 +87,7 @@ class AiTextElement implements ListenerInterface
         } else {
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not found.")." (Your IP is {$_SERVER['REMOTE_ADDR']})");
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found and generation not allowed.");
-            http_response_code(404);
+            http_response_code(410);
         }
     }
 
