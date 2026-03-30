@@ -48,6 +48,55 @@ The expansion order is:
 3. The remaining text content is used as the AI prompt.
 4. The `<ai-text>` element itself is then processed and replaced with the generated article.
 
+## Multi-Step Pipeline
+
+The `<ai-text>` element supports a multi-step pipeline using `<step>` and `<qc>` child elements. This allows chaining AI operations where each step builds on the output of the previous one, with optional quality control checks in between.
+
+### Step Element
+
+`<step>` defines an AI generation step. All steps except the first can reference the output from the previous step using the `{{input}}` variable.
+
+### QC Element
+
+`<qc>` defines a quality control check. The text content of `<qc>` lists the criteria that the current output must satisfy. If the QC check fails, the entire pipeline is restarted from the beginning (up to 3 retries).
+
+### Processing Rules
+
+- `<step>` and `<qc>` can appear in any order and at any nesting depth (only their text content matters, surrounding tags are ignored).
+- Steps and QC checks are processed in document order.
+- The first `<step>` generates initial content from its prompt.
+- Subsequent `<step>` elements receive the previous output via `{{input}}`.
+- A `<qc>` element validates the current output against its criteria.
+- If any `<qc>` check fails, the whole pipeline restarts (max 3 retries total). If all retries fail, the generation fails.
+- If no `<step>` or `<qc>` elements are found, `<ai-text>` falls back to the simple single-prompt mode.
+
+### Example
+
+```html
+<ai-text ai="default" remove-invalid-links="true">
+    <step>
+        Write a 500-word blog post about trademark monitoring in the EU.
+    </step>
+    <qc>
+        - It must not contain any external links.
+        - It must not contain any personal names.
+        - It must be at least 400 words long.
+    </qc>
+    <step>
+        Take the following article and add a compelling introduction
+        and a call-to-action conclusion:
+
+        {{input}}
+    </step>
+</ai-text>
+```
+
+In this example:
+1. The first `<step>` generates the initial blog post.
+2. The `<qc>` check validates the post has no links, no names, and meets the length requirement.
+3. If QC passes, the second `<step>` refines the article by adding an intro and CTA using `{{input}}` to reference the validated output.
+4. If QC fails, the entire pipeline restarts from step 1 (up to 3 times).
+
 ## Processing
 
 The first time the `<ai-text>` element is rendered, the system queues a request for the backend to generate the article. In the meantime the element will display a message that the server is busy and the user should try again later (HTTP 503 with `Retry-After: 600`). Once the article is generated, the element will display the article content.

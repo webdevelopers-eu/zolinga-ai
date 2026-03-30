@@ -9,6 +9,7 @@ use Zolinga\AI\Events\AiEvent;
 use Zolinga\System\Events\CliRequestResponseEvent;
 use Zolinga\System\Events\ListenerInterface;
 use Zolinga\System\Events\RequestResponseEvent;
+use Zolinga\AI\Exceptions\QcException;
 
 class AiGenerator implements ListenerInterface
 {
@@ -95,20 +96,27 @@ class AiGenerator implements ListenerInterface
         $row = $api->db->query("SELECT * FROM aiEvents WHERE id = ?", $id)->fetchAssoc();
         $eventData = json_decode($row['aiEvent'], true);
         $event = AiEvent::fromArray($eventData);
+        $retriesLeft = 3;
         
-        try {
-            $this->prompt($id, $event);
-            $event->dispatch();
-            $api->db->query("DELETE FROM aiEvents WHERE id = ?", $id);
-        } catch (\Throwable $e) {
-            $api->log->error('ai', "Error processing request {$id}: {$e->getMessage()}, trace {$e->getTraceAsString()}");
-            $api->db->query(
-                "UPDATE aiEvents SET status = ?, end = ? WHERE id = ?", 
-                PromptStatusEnum::ERROR, 
-                time(),
-                $id
-            );
-        }
+        do {                
+            $retry = false;
+            try {
+                $this->prompt($id, $event);
+                $event->dispatch();
+                $api->db->query("DELETE FROM aiEvents WHERE id = ?", $id);
+            } catch (QcException $e) {
+                $api->log->warning('ai', "QC check failed for request UUID \"{$event->uuid}\" (#{$id}). Retries left: {$retriesLeft}.");
+                $retry = $retriesLeft-- > 0;
+            } catch (\Throwable $e) {
+                $api->log->error('ai', "Error processing request {$id}: {$e->getMessage()}, trace {$e->getTraceAsString()}");
+                $api->db->query(
+                    "UPDATE aiEvents SET status = ?, end = ? WHERE id = ?", 
+                    PromptStatusEnum::ERROR, 
+                    time(),
+                    $id
+                );
+            }
+        } while ($retry);
     }
     
     /**
@@ -126,11 +134,44 @@ class AiGenerator implements ListenerInterface
         global $api;
         
         $ai = $event->request['ai']; // for now always 'ollama'
-        $prompt = $event->request['prompt'];
-        $format = $event->request['format'] ?: null;
 
+        $promptList = $event->request['prompt'];
+        if (is_string($promptList)) $promptList = [["prompt" => $promptList, "type" => "step"]];
+
+        $format = $event->request['format'] ?: null;
         $api->log->info('ai', "Processing request UUID \"{$event->uuid}\" (#{$id}) with AI '{$ai}'");
-        $response = $api->ai->prompt($ai, $prompt, $format);
+        $qcTemplate = file_get_contents('module://zolinga-ai/data/qc-prompt.txt');
+
+        $response = '';
+        foreach ($promptList as $step) {
+            $stepPrompt = str_replace("{{input}}", $response, $step['prompt']);
+
+            switch ($step['type'] ?? 'step') {
+                case 'qc':
+                    $qcPrompt = str_replace(
+                        ["{{_prompt_}}", "{{_content_}}"], 
+                        [$stepPrompt, $response],
+                        $qcTemplate
+                    );
+                    $answer = $api->ai->prompt($ai, $qcPrompt, [
+                        "type" => "object", 
+                        "properties" => [
+                            "compliant" => ["type" => "boolean"],
+                            "explanation" => ["type" => "string"]
+                        ], 
+                        "required" => ["compliant", "explanation"]
+                    ]);
+                    if (!$answer['compliant']) {
+                        $api->log->info('ai', "QC check failed for request UUID \"{$event->uuid}\" (#{$id}). Explanation: {$answer['explanation']}, Test: " . substr($stepPrompt, 0, 100) . "...");
+                        throw new QcException("QC check failed: {$answer['explanation']}");
+                    }
+                    break;
+                case 'step':
+                default:
+                    $response = $api->ai->prompt($ai, $stepPrompt, $format);
+            }
+        }
+
         $api->db->query("UPDATE aiEvents SET response = ? WHERE id = ?", json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), $id);
         $event->response['data'] = $response;
     }

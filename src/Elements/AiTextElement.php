@@ -12,15 +12,19 @@ use Zolinga\System\Types\OriginEnum;
 /**
 * Processes CMS generative article content. 
 * 
-* Example: <ai-text ai="default" model="my-model" remove-invalid-links="true">Hello, how are you?</ai-text>
+* Supports two modes:
+* 1. Simple: <ai-text ai="default">Write about X.</ai-text>
+* 2. Pipeline: <ai-text ai="default"><step>Write draft.</step><qc>- No links.</qc><step>Refine: {{input}}</step></ai-text>
 *
-* The element will be replaced with the generated article. If the article is not yet generated,
-* a placeholder message will be displayed and the article generation will be queued.
+* In pipeline mode, <step> and <qc> elements are processed in order.
+* Each <step> generates content (subsequent steps receive previous output via {{input}}).
+* Each <qc> validates the current output against its criteria. On QC failure the pipeline retries up to 3 times.
 *
 * Attributes:
 * - ai: Optional. The AI backend to use. Default is "default".
 * - uuid: Optional. The unique identifier of the article. If not provided, hash of the prompt will be used.
 * - remove-invalid-links: Optional. If set to "true", invalid links in the generated article will be removed.
+* - allow-generate-from: Optional. Comma-separated IP/CIDR list that may trigger generation.
 *
 * @author Daniel Sevcik <sevcik@webdevelopers.eu>
 * @date 2025-02-07
@@ -40,55 +44,98 @@ class AiTextElement implements ListenerInterface
     {
         global $api;
         
-        $ai = $event->input->getAttribute("ai") ?: "default";
         $api->cmsParser->parse($event->input, true);
 
+        $list = iterator_to_array($event->inputXPath->query(".//step|.//qc", $event->input));
+
+        if (!count($list)) { // no subelements supported
+            $list = [$event->input];
+        }
+
+        $list = array_map(fn($step) => [
+            "prompt" => $this->extractPrompt($step),
+            "type" => $step->localName
+        ], $list);
+
+        $ai = $event->input->getAttribute("ai") ?: "default";
+        $uuid = $this->resolveUuid($event->input, $ai, 
+            json_encode($list, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+
+        if ($event->input->hasAttribute('print-only')) {
+            $this->print($event->output, 
+                json_encode($list, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+            return;
+        }
+            
+        $event->output->nodeValue = "";
+        $this->handleArticleResponse($event, $uuid, $ai, $list);
+    }
+
+    /**
+     * Extract text prompt from the input element, stripping scripts.
+     */
+    private function extractPrompt(\DOMElement $input): string
+    {
+        global $api;
+
         $contentDom = new \DOMDocument();
-        $contentDom->appendChild($contentDom->importNode($event->input, true));
-        // Remove all scripts
+        $contentDom->appendChild($contentDom->importNode($input, true));
+
         $scripts = $contentDom->getElementsByTagName("script");
         for ($i = $scripts->length - 1; $i >= 0; $i--) {
             $scripts->item($i)?->parentNode->removeChild($scripts->item($i));
         }
-        $prompt = $contentDom->textContent;
 
-        if ($event->input->hasAttribute('print-only')) {
-            $pre = $event->output->ownerDocument->createElement("pre");
-            $pre->appendChild($event->output->ownerDocument->createTextNode($prompt));
-            $event->output->appendChild($pre);
-            $event->setStatus(ContentElementEvent::STATUS_OK, "Printed prompt only.");
-            return;
+        return $contentDom->textContent;
+    }
+
+    /**
+     * Resolve UUID from explicit attribute or generate from prompt fingerprint.
+     */
+    private function resolveUuid(\DOMElement $input, string $ai, string $prompt): string
+    {
+        if ($input->getAttribute("uuid")) {
+            return $input->getAttribute("uuid");
         }
-        
-        // Erase the contents of the element to be safe
-        $event->output->nodeValue = "";
-        
-        if ($event->input->getAttribute("uuid")) {
-            $uuid = $event->input->getAttribute("uuid");
-        } else {
-            $fingerprint = "$ai:$prompt";
-            $fingerprint = preg_replace('/\s+/', ' ', trim($fingerprint));
-            $uuid = 'ai:article:' . substr(sha1($fingerprint), 0, 12);
-        }
-        
+
+        $fingerprint = "$ai:$prompt";
+        $fingerprint = preg_replace('/\s+/', ' ', trim($fingerprint));
+        return 'ai:article:' . substr(sha1($fingerprint), 0, 12);
+    }
+
+    /**
+     * Render existing article or queue generation, responding with appropriate HTTP status.
+     */
+    private function handleArticleResponse(ContentElementEvent $event, string $uuid, string $ai, array $list): void
+    {
+        global $api;
+
         $article = AiTextModel::getTextModel($uuid);
         $allowedIps = $event->input->getAttribute("allow-generate-from") ?: null;
+
         if ($article) {
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
             $this->renderArticle($event->input, $event->output, $article);             
         } elseif (!$allowedIps || $api->network->matchCidr($_SERVER['REMOTE_ADDR'], explode(',', $allowedIps))) {
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The server is busy. Please try again later."));
             $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
-            $this->generateArticle($uuid, $ai, $prompt, $removeInvalidLinks);
+            $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks);
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found.");
-            // Throw HTTP error 503 with Retry-After: 600
-            header("Retry-After: 600");
+            header("Retry-After: 86400");
             http_response_code(503);                
         } else {
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not found.")." (Your IP is {$_SERVER['REMOTE_ADDR']})");
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found and generation not allowed.");
             http_response_code(410);
         }
+    }
+
+    private function print(\DOMDocumentFragment $frag, string $text): void
+    {
+        $pre = $frag->ownerDocument->createElement("pre");
+        $pre->setAttribute("class", "zolinga-text print-only");
+        $pre->appendChild(new \DOMText($text));
+        $frag->appendChild($pre);
     }
 
     private function renderArticle(\DOMElement $input, \DOMDocumentFragment $frag, AiTextModel $article): void
@@ -139,11 +186,11 @@ class AiTextElement implements ListenerInterface
     *
     * @param string $uuid The unique identifier of the article.
     * @param string $ai The backend to use.
-    * @param string $prompt The prompt to use.
+    * @param array $list The list of steps and QC checks to process. Each item has 'prompt' and 'type' keys.
     * @param bool $removeInvalidLinks Whether to validate links in the article. If invalid link is found, it will be removed.
     * @return void
     */
-    private function generateArticle(string $uuid, string $ai, string $prompt, bool $removeInvalidLinks = false): void
+    private function generateArticle(string $uuid, string $ai, array $list, bool $removeInvalidLinks = false): void
     {
         global $api;
         
@@ -153,7 +200,7 @@ class AiTextElement implements ListenerInterface
         
         $event = new AiEvent("ai:article:generated", OriginEnum::INTERNAL, [
             'ai' => $ai,
-            'prompt' => $prompt,
+            'prompt' => $list,
             'triggerURL' => $api->url->getCurrentUrl(),
             'removeInvalidLinks' => $removeInvalidLinks
         ]);

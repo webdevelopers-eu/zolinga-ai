@@ -39,7 +39,28 @@ When the page is loaded:
 1. If the content is already generated (identified by `uuid`), it will be displayed.
 2. If the content is not yet generated, a placeholder message will be displayed and the generation will be queued.
 3. If `remove-invalid-links="true"` is set, invalid links are removed during generation before the content is saved.
-3. The server will return HTTP 503 with Retry-After header, indicating that the client should try again later.
+4. The server will return HTTP 503 with Retry-After header, indicating that the client should try again later.
+
+## Multi-Step Pipeline
+
+Instead of a single prompt, `<ai-text>` can contain `<step>` and `<qc>` child elements to create a processing pipeline:
+
+```html
+<ai-text ai="default">
+    <step>Write a draft article about solar energy benefits.</step>
+    <qc>
+        - Must not contain external links.
+        - Must be at least 300 words.
+    </qc>
+    <step>Rewrite the following to be more engaging:\n\n{{input}}</step>
+    <qc>Must have a readability score above 60.</qc>
+</ai-text>
+```
+
+- **`<step>`**: An AI generation step. Use `{{input}}` to reference output from the previous step.
+- **`<qc>`**: A quality control check. Lists criteria the current output must meet. If it fails, the entire pipeline retries (up to 3 times).
+
+Steps and QC checks are processed in document order. Tags can be nested at any depth — only their text content matters. See the [reference](:ref:event:cms:content:ai-text) for full details.
 
 ## Output Structure
 

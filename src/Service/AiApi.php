@@ -108,7 +108,7 @@ public function isPromptAsyncQueued(string $uuid): bool
 * IMPORTANT: This is a blocking call and should be used in async context only.
 *
 * Example:
-* $response = $api->ai->prompt('default', 'deepseek-r1:8b', 'Is the labrador blue? Set `answer` prop to true if yes.', {
+* $response = $api->ai->prompt('default', 'Is the labrador blue? Set `answer` prop to true if yes.',
 *     [
 *       "type" => "object", 
 *       "properties" => [
@@ -117,7 +117,7 @@ public function isPromptAsyncQueued(string $uuid): bool
 *       ], 
 *       "required" => ["answer", "explanation"]
 *     ]
-* });
+* );
 *
 * @param string $ai The backend to use as defined in the configuration.
 * @param string $prompt The prompt to send.
