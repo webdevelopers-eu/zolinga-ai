@@ -8,15 +8,43 @@ use Zolinga\System\Events\RequestResponseEvent;
 use Zolinga\System\Types\OriginEnum;
 
 /**
- * AI event class that represents a prompt and a response.
+ * AI event class that represents a prompt request and its response.
+ * 
+ * Used with `$api->ai->promptAsync()` to queue async AI generation.
+ * The event is serialized to DB, later deserialized and processed by `bin/zolinga ai:generate`.
+ * After processing, the event is dispatched so your listener receives the result.
  *
- * @author Daniel Sevcik <sevcik@zolinga.ort>
+ * Request keys:
+ * - 'ai' (string, required): Backend name as defined in config `ai.backends.*`. Default: "default".
+ * - 'prompt' (string|array, required): Either a plain prompt string or an array of pipeline steps.
+ *    Each step: ['prompt' => string, 'type' => 'step'|'qc']. See <ai-text> pipeline docs.
+ * - 'format' (array|null): JSON Schema for structured output, or null for plain text. Default: null.
+ * - 'removeInvalidLinks' (bool): Strip invalid links from generated HTML. Default: false.
+ * - Any custom keys you add to request[] are preserved through serialization.
+ *
+ * Response keys (set after processing):
+ * - 'data' (string|array): The AI-generated content. String for plain text, array if format was set.
+ * - Any custom keys you add to response[] are preserved and available in your callback listener.
+ *
+ * Usage:
+ * ```php
+ * $event = new AiEvent("my:callback:event", OriginEnum::INTERNAL, [
+ *     'ai' => 'default',
+ *     'prompt' => 'Write about Zolinga.',
+ * ], [
+ *     'myId' => 123, // custom data preserved for your callback
+ * ]);
+ * $event->uuid = 'my-unique-id'; // optional, auto-generated if not set
+ * $api->ai->promptAsync($event);
+ * ```
+ *
+ * @author Daniel Sevcik <sevcik@zolinga.net>
  * @date 2025-02-07
  */
 class AiEvent extends RequestResponseEvent {
     private const REQUEST_DEFAULTS = [
         'ai' => 'default',
-        'prompt' => '',
+        'prompt' => [],
         'format' => null,
         'removeInvalidLinks' => false,
     ];
