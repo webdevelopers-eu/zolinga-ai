@@ -62,8 +62,10 @@ class AiTextElement implements ListenerInterface
             json_encode($list, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
         if ($event->input->hasAttribute('print-only')) {
-            $this->print($event->output, 
-                json_encode($list, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+            $this->print($event->output, implode("\n\n", array_map(
+                fn($item) => "==={$item['type']}===\n{$item['prompt']}", $list
+            )));
+            $event->setStatus(ContentElementEvent::STATUS_OK, "Print-only article $uuid rendered.");
             return;
         }
             
@@ -119,7 +121,7 @@ class AiTextElement implements ListenerInterface
         } elseif (!$allowedIps || $api->network->matchCidr($_SERVER['REMOTE_ADDR'], explode(',', $allowedIps))) {
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The server is busy. Please try again later."));
             $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
-            $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks);
+            $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks, $event->input->getAttribute("tag") ?: null);
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found.");
             header("Retry-After: 86400");
             http_response_code(503);                
@@ -188,9 +190,10 @@ class AiTextElement implements ListenerInterface
     * @param string $ai The backend to use.
     * @param array $list The list of steps and QC checks to process. Each item has 'prompt' and 'type' keys.
     * @param bool $removeInvalidLinks Whether to validate links in the article. If invalid link is found, it will be removed.
+    * @param string|null $tag An optional tag to associate with the article. Can be used for categorization or later retrieval. Will be stored in DB column 'tag'.
     * @return void
     */
-    private function generateArticle(string $uuid, string $ai, array $list, bool $removeInvalidLinks = false): void
+    private function generateArticle(string $uuid, string $ai, array $list, bool $removeInvalidLinks = false, ?string $tag = null): void
     {
         global $api;
         
@@ -200,6 +203,7 @@ class AiTextElement implements ListenerInterface
         
         $event = new AiEvent("ai:article:generated", OriginEnum::INTERNAL, [
             'ai' => $ai,
+            'tag' => $tag,
             'prompt' => $list,
             'triggerURL' => $api->url->getCurrentUrl(),
             'removeInvalidLinks' => $removeInvalidLinks
@@ -225,10 +229,11 @@ class AiTextElement implements ListenerInterface
         
         $uuid = $event->uuid;
         $contents = $event->response['data'];
+        $tag = $event->request['tag'] ?? null;
         $triggerURL = $event->request['triggerURL'] ?? null;
         $removeInvalidLinks = $event->request['removeInvalidLinks'] ?? false;
         
-        $article = AiTextModel::getTextModel($uuid) ?: AiTextModel::createTextModel($uuid, $contents, $triggerURL);
+        $article = AiTextModel::getTextModel($uuid) ?: AiTextModel::createTextModel($uuid, $contents, $triggerURL, $tag);
         $article->setContents($contents, $removeInvalidLinks); // this setter converts Markdown to HTML
 
         $article->save();

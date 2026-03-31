@@ -32,6 +32,9 @@ class AiGenerator implements ListenerInterface
     * --timeLimit=N
     *    If set, exit approximately after N minutes (will let last prompt finish).
     * 
+    * --uuid=UUID
+    *    If set, process only the prompt with the specified UUID and exit.
+    *
     * Only one instance of this process can run at a time. If another instance is running
     * it will exit immediately.
     *
@@ -44,6 +47,19 @@ class AiGenerator implements ListenerInterface
         $loop = (bool) ($event->request['loop'] ?? false);
         $this->timeLimit = $event->request['timeLimit'] ?? 0 ? 60 * (int) $event->request['timeLimit'] : null;
         $this->startTime = time();
+
+        if ($event->request['uuid'] ?? null) {
+            // If a specific UUID is provided, process only that one
+            $uuid = $event->request['uuid'];
+            $id = $api->db->query("SELECT id FROM aiEvents WHERE uuid = ?", $uuid)['id'] ?? null;
+            if ($id) {
+                $this->processRequest($id);
+                $event->setStatus(RequestResponseEvent::STATUS_OK, "Request with UUID {$uuid} processed.");
+            } else {
+                $event->setStatus(RequestResponseEvent::STATUS_NOT_FOUND, "No request found with UUID {$uuid}.");
+            }
+            return;
+        }
         
         if ($api->registry->acquireLock('ai:generate', 0)) {
             do {
@@ -140,39 +156,43 @@ class AiGenerator implements ListenerInterface
 
         $format = $event->request['format'] ?: null;
         $api->log->info('ai', "Processing request UUID \"{$event->uuid}\" (#{$id}) with AI '{$ai}'");
-        $qcTemplate = file_get_contents('module://zolinga-ai/data/qc-prompt.txt');
 
         $response = '';
-        foreach ($promptList as $step) {
+        foreach (array_values($promptList) as $ord => $step) {
             $stepPrompt = str_replace("{{input}}", $response, $step['prompt']);
 
             switch ($step['type'] ?? 'step') {
                 case 'qc':
-                    $qcPrompt = str_replace(
-                        ["{{_prompt_}}", "{{_content_}}"], 
-                        [$stepPrompt, $response],
-                        $qcTemplate
-                    );
-                    $answer = $api->ai->prompt($ai, $qcPrompt, [
-                        "type" => "object", 
-                        "properties" => [
-                            "compliant" => ["type" => "boolean"],
-                            "explanation" => ["type" => "string"]
-                        ], 
-                        "required" => ["compliant", "explanation"]
-                    ]);
-                    if (!$answer['compliant']) {
-                        $api->log->info('ai', "QC check failed for request UUID \"{$event->uuid}\" (#{$id}). Explanation: {$answer['explanation']}, Test: " . substr($stepPrompt, 0, 100) . "...");
-                        throw new QcException("QC check failed: {$answer['explanation']}");
+                    $answer = $this->runQcCheck($ai, $stepPrompt, $response);
+                    if ($answer['compliant']) {
+                        $api->log->info('ai', "Pipeline[#$ord/{$step['type']}]: QC check passed for request UUID \"{$event->uuid}\" (#{$id}).");
+                    } else {
+                        $api->log->info('ai', "Pipeline[#$ord/{$step['type']}]: QC check failed for request UUID \"{$event->uuid}\" (#{$id}). Explanation: {$answer['explanation']}, Test: " . substr(json_encode($stepPrompt), 0, 100) . "...");
+                        throw new QcException("Pipeline[#$ord/{$step['type']}]: QC check failed: {$answer['explanation']}");
                     }
                     break;
                 case 'step':
                 default:
                     $response = $api->ai->prompt($ai, $stepPrompt, $format);
+                    $api->log->info('ai', "Pipeline[#$ord/{$step['type']}]: Step completed for request UUID \"{$event->uuid}\" (#{$id}). Response: " . substr(json_encode($response), 0, 100) . "...");
             }
         }
 
         $api->db->query("UPDATE aiEvents SET response = ? WHERE id = ?", json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), $id);
         $event->response['data'] = $response;
+    }
+
+    private function runQcCheck(string $ai, string $prompt, string $input): array
+    {
+        global $api;
+        
+        $qcTemplate = file_get_contents('module://zolinga-ai/data/qc-prompt.txt');
+        $qcPrompt = str_replace(
+            ["{{test}}", "{{input}}"], 
+            [$prompt, $input], 
+            $qcTemplate
+        );
+        $qcResponse = $api->ai->prompt($ai, $qcPrompt);
+        return $qcResponse;
     }
 }

@@ -1,7 +1,7 @@
 ## Syntax
 
 ```html
-<ai-text [ai="{AI_BACKEND}"] [uuid="{UUID}"] [element="{ELEMENT_TYPE}"] [allow-generate-from="{IP_LIST}"] [remove-invalid-links="true"] [other_attributes...]>{PROMPT}</ai-text>
+<ai-text [ai="{AI_BACKEND}"] [uuid="{UUID}"] [element="{ELEMENT_TYPE}"] [allow-generate-from="{IP_LIST}"] [remove-invalid-links="true"] [tag="{TAG}"] [other_attributes...]>{PROMPT}</ai-text>
 ```
 
 Example:
@@ -27,6 +27,8 @@ Restricted generation (only your office IP and localhost can trigger generation)
 - `element`: The HTML element type to use for the generated content. Default: `article`.
 - `allow-generate-from`: A comma-separated list of IP addresses or CIDR ranges that are allowed to **trigger** AI content generation. Requests from IPs not on the list will receive a 404 response instead of queuing a generation job. Already-generated content is served to everyone regardless of this attribute. If the attribute is omitted, any visitor can trigger generation. Uses `$api->network->matchCidr()` for matching, so both IPv4 and IPv6 are supported. Example: `"109.164.101.75,10.0.0.0/8,2001:db8::/32"`.
 - `remove-invalid-links`: If set to `true`, invalid links found in the generated article will be removed before the article is saved. Use this when you want link cleanup during article generation.
+- `tag`: An optional tag to associate with the generated article. Stored in the database alongside the article and can be used for categorization, filtering, or later retrieval of related articles. The value is stored as-is in the DB `tag` column. Can be used as a version marker (e.g. `tag="2.0"`) to force regeneration by changing the UUID fingerprint indirectly, or simply to group articles by topic.
+- `print-only`: If present, renders the prompt pipeline as plain text instead of generating or displaying an article. Useful for debugging prompts. Each step is shown as `===type===` followed by the prompt text.
 - Additional attributes: All other attributes (such as `class`, `style`, `data-*`, etc.) will be copied to the output element.
 
 ## Nested Elements
@@ -133,3 +135,10 @@ To run the command one-time to process all queued articles and then exit, use th
 ```bash
 ./bin/zolinga ai:generate
 ```
+
+To process a single article by UUID:
+```bash
+./bin/zolinga ai:generate --uuid=ai:article:a1b2c3d4e5f6
+```
+
+See [:ref:event:ai:generate](:ref:event:ai:generate) for full parameter reference.

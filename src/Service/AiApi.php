@@ -132,7 +132,7 @@ public function prompt(string $ai, string $prompt, ?array $format = null, ?array
         try {
             return $this->processPrompt($ai, $prompt, $format, $options);
         } catch (\Exception $e) {
-            trigger_error("Error processing prompt ($retry attempts left): " . $e->getMessage(), E_USER_WARNING);
+            trigger_error("Error processing prompt ($retry attempts left): " . $e->getMessage() . "trace, " . $e->getTraceAsString(), E_USER_WARNING);
         }
     }
     throw new \Exception("Failed to process the prompt after multiple attempts.", 1228);
@@ -175,8 +175,12 @@ private function processPrompt(string $ai, string $prompt, ?array $format = null
         $answer = $answerRaw;
         foreach($config['replace'] ?: [] as ['search' => $search, 'replace' => $replace]) {
             $newAnswer = preg_replace($search, $replace, $answer);
-            if ($newAnswer) {
+            if ($newAnswer && json_encode($newAnswer) !== false) {
                 $answer = $newAnswer;
+            } elseif ($newAnswer) {
+                $api->log->error('ai', "The regex replacement produced an unserializable result. Search: " . json_encode($search, JSON_UNESCAPED_SLASHES) . 
+                    " Replace: " . json_encode($replace, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . 
+                    " Result was: " . json_encode($newAnswer, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             } else {
                 $api->log->error('ai', "Failed to apply regex replacement on the model response. Search: " . json_encode($search, JSON_UNESCAPED_SLASHES) . 
                     " Replace: " . json_encode($replace, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . 
@@ -184,6 +188,7 @@ private function processPrompt(string $ai, string $prompt, ?array $format = null
             }
         }
     } else {
+
         try {
             $answer = json_decode($answerRaw, true, 512, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
             if (!is_array($answer)) {
@@ -301,10 +306,13 @@ private function httpRequest(string $url, array $request, string $model): array
     
     $basicAuth = $user && $pass ? base64_encode("$user:$pass") : null;
     $this->log($request, "Request to $urlSafe");
-    $raw = json_encode($request, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
+    $raw = json_encode($request, JSON_UNESCAPED_SLASHES)
+        or throw new \Exception("Failed to encode the request to JSON: " . json_last_error_msg(), 1220);
     
     $timer = microtime(true);
     $api->log->info('ai', "Asking $model ".($request['think'] ? "(thinking) " : "")."at $urlSafe (".number_format(strlen($raw))." bytes)...");
+    $prevSocketTimeout = ini_get('default_socket_timeout');
+    ini_set('default_socket_timeout', 28800);
     $response = file_get_contents($url, false, stream_context_create([
         'http' => [
             'method' => 'POST',
@@ -318,15 +326,17 @@ private function httpRequest(string $url, array $request, string $model): array
             'timeout' => 28800, // 28800s = 8 hours
         ],
     ]));
+    ini_set('default_socket_timeout', $prevSocketTimeout);
     
     if (!$response) {
         // Generate curl reproducible command
+        $error = error_get_last();
         $curl = "curl -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'Accept-Charset: utf-8' -d ".escapeshellarg($raw)." '$url'";
-        $api->log->error('ai', "Failed to get a response from the AI model. Try to run the following command in your terminal to reproduce the error: $curl");
+        $api->log->error('ai', "Failed to get a response from the AI model. Last error: " . json_encode($error) . ". Try to run the following command in your terminal to reproduce the error: $curl");
         throw new \Exception("Failed to get a response from the AI model.", 1221);
     }
     
-    $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR)
+    $data = json_decode($response, true, 512, JSON_UNESCAPED_UNICODE)
         or throw new \Exception("Failed to decode the response: $response", 1227);
 
     $stat=[

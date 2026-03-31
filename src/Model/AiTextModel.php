@@ -41,7 +41,22 @@ class AiTextModel
      */
     private string $contents;
 
+    /**
+     * What URL triggered the generation of this article. Optional, can be null if not applicable.
+     */
     public private(set) ?string $triggerURL;
+
+    /**
+     * Optional tag associated with the article. Can be used for categorization or versioning.
+     * 
+     * This value is stored in the database and can be used for filtering or later retrieval of related articles.
+     */
+    public private(set) ?string $tag;
+
+    /**
+     * Timestamp of the last update to the article.
+     */
+    public private(set) int $updated;
 
     /**
      * Creates a new AI article model.
@@ -57,8 +72,9 @@ class AiTextModel
         $this->uuid = $rowData['uuid'];
         $this->contents = $rowData['contents'];
         $this->triggerURL = $rowData['triggerURL'] ?? null;
-
-        $contents = preg_replace('/<think>.*?<\/think>/', '', $this->contents);
+        $this->tag = $rowData['tag'] ?? null;
+        $this->updated = strtotime($rowData['updated']);
+        // $contents = preg_replace('/<think>.*?<\/think>/', '', $this->contents);
     }
 
     public function __get(string $name) {
@@ -130,9 +146,9 @@ class AiTextModel
 
         $api->db->query("
             UPDATE aiTexts 
-            SET contents = ?, triggerURL = ?
+            SET contents = ?, triggerURL = ?, updated = UNIX_TIMESTAMP(), tag = ?
             WHERE uuidHash = UNHEX(SHA1(?))", 
-            $this->contents, $this->triggerURL, $this->uuid);
+            $this->contents, $this->triggerURL, $this->tag, $this->uuid);
     }
 
     /**
@@ -141,13 +157,14 @@ class AiTextModel
      * @param string $uuid The UUID of the article.
      * @param string $contents The contents of the article.
      * @param string|null $triggerURL The trigger URL of the article.
+     * @param string|null $tag An optional tag to associate with the article. Can be used for categorization or later retrieval. Will be stored in DB column 'tag'.
      * @return AiTextModel The created article.
      */
-    static public function createTextModel(string $uuid, string $contents, ?string $triggerURL): AiTextModel
+    static public function createTextModel(string $uuid, string $contents, ?string $triggerURL, ?string $tag = null): AiTextModel
     {
         global $api;
 
-        $id = $api->db->query("INSERT INTO aiTexts (uuid, uuidHash, contents, triggerURL) VALUES (?, UNHEX(SHA1(?)), ?, ?)", $uuid, $uuid, $contents, $triggerURL);
+        $id = $api->db->query("INSERT INTO aiTexts (uuid, uuidHash, contents, triggerURL, tag, updated) VALUES (?, UNHEX(SHA1(?)), ?, ?, ?, UNIX_TIMESTAMP())", $uuid, $uuid, $contents, $triggerURL, $tag);
         if (!$id) {
             throw new \Exception("Failed to insert AI article into database.", 1225);
         }
