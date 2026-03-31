@@ -47,6 +47,12 @@
   ],
 
   "emit": [
+    {
+      "event": "ai:article:generated",
+      "description": "Dispatched when an AI-generated article is ready (callback from promptAsync).",
+      "class": "\\Zolinga\\AI\\Events\\AiEvent",
+      "origin": ["internal"]
+    }
   ],
 
   "webComponents": [
