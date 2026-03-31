@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "compliant": {
+            "type": "boolean"
+        },
+        "explanation": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "compliant",
+        "explanation"
+    ]
+}
