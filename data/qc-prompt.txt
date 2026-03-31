@@ -1,15 +1,15 @@
-{
-    "type": "object",
-    "properties": {
-        "compliant": {
-            "type": "boolean"
-        },
-        "explanation": {
-            "type": "string"
-        }
-    },
-    "required": [
-        "compliant",
-        "explanation"
-    ]
-}
+
+CRITERIA:
+
+{{test}}
+
+ANSWER: 
+
+Does the article below meet all the criteria? If yes then set the JSON property named `compliant` to JSON boolean `true`, otherwise set it to `false`.
+    
+Please provide a brief explanation for your decision and include it in the `explanation` JSON property.
+    
+ARTICLE:
+
+{{input}} 
+

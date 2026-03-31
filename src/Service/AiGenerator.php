@@ -185,14 +185,27 @@ class AiGenerator implements ListenerInterface
     private function runQcCheck(string $ai, string $prompt, string $input): array
     {
         global $api;
-        
+
+        $format = [
+                    "type" => "object",
+                    "properties" => [
+                        "compliant" => [
+                            "type" => "boolean"
+                        ],
+                        "explanation" => [
+                            "type" => "string"
+                        ]
+                    ],
+                    "required" => ["compliant", "explanation"]
+                ];
+
         $qcTemplate = file_get_contents('module://zolinga-ai/data/qc-prompt.txt');
         $qcPrompt = str_replace(
             ["{{test}}", "{{input}}"], 
             [$prompt, $input], 
             $qcTemplate
         );
-        $qcResponse = $api->ai->prompt($ai, $qcPrompt);
+        $qcResponse = $api->ai->prompt($ai, $qcPrompt, $format);
         return $qcResponse;
     }
 }
