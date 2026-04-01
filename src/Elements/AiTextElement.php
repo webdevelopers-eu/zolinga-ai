@@ -8,6 +8,7 @@ use Zolinga\AI\Model\AiTextModel;
 use Zolinga\Cms\Events\ContentElementEvent;
 use Zolinga\System\Events\ListenerInterface;
 use Zolinga\System\Types\OriginEnum;
+use Zolinga\System\Types\StatusEnum;
 
 /**
 * Processes CMS generative article content. 
@@ -116,19 +117,19 @@ class AiTextElement implements ListenerInterface
         $allowedIps = $event->input->getAttribute("allow-generate-from") ?: null;
 
         if ($article) {
-            $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
             $this->renderArticle($event->input, $event->output, $article);             
+            $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
         } elseif (!$allowedIps || $api->network->matchCidr($_SERVER['REMOTE_ADDR'], explode(',', $allowedIps))) {
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The server is busy. Please try again later."));
             $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
             $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks, $event->input->getAttribute("tag") ?: null);
-            $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found.");
+            $event->setStatus(ContentElementEvent::STATUS_SERVICE_UNAVAILABLE, "Article $uuid not available at this time.");
             header("Retry-After: 86400");
-            http_response_code(503);                
+            http_response_code(StatusEnum::SERVICE_UNAVAILABLE->value);                
         } else {
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not found.")." (Your IP is {$_SERVER['REMOTE_ADDR']})");
-            $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found and generation not allowed.");
-            http_response_code(410);
+            $event->setStatus(ContentElementEvent::STATUS_GONE, "Article $uuid not found and generation not allowed.");
+            http_response_code(StatusEnum::GONE->value);
         }
     }
 
