@@ -5,9 +5,8 @@ namespace Zolinga\AI\Service;
 use DOMDocument;
 use JsonException;
 use Parsedown;
-use Zolinga\AI\Enum\AiaiEnum;
-use Zolinga\AI\Enum\AiTypeEnum;
 use Zolinga\AI\Events\AiEvent;
+use Zolinga\AI\Types\AiBackend;
 use Zolinga\AI\Workflow\WorkflowAtom;
 use Zolinga\System\Events\ServiceInterface;
 
@@ -23,6 +22,17 @@ class AiApi implements ServiceInterface
 {
     public function __construct()
     {
+    }
+
+    /**
+     * Resolve backend parameter to AiBackend object.
+     *
+     * @param AiBackend|string $ai
+     * @return AiBackend
+     */
+    private function getBackendObject(AiBackend|string $ai): AiBackend
+    {
+        return $ai instanceof AiBackend ? $ai : new AiBackend($ai);
     }
     
     /**
@@ -119,15 +129,17 @@ public function isPromptAsyncQueued(string $uuid): bool
 *     ]
 * );
 *
-* @param string $ai The backend to use as defined in the configuration.
+* @param AiBackend|string $ai The backend to use as defined in the configuration.
 * @param string $prompt The prompt to send.
 * @param array|null $format Expected output format specified as JSON schema or "json" or null. See Oolama API documentation.
 * @param array|null $options Optional parameters to customize the prompt. E.g. "{num_ctx: 4096}". See Ollama options.
 * @param int $retry The number of times to retry the request in case of failure.
 * @return array|string The response from the AI model - if the $format is set to "json" or JSON schema, the response is decoded array, otherwise it is a string.
 */
-public function prompt(string $ai, string $prompt, ?array $format = null, ?array $options = null, int $retry = 6): array|string
+public function prompt(AiBackend|string $ai, string $prompt, ?array $format = null, ?array $options = null, int $retry = 6): array|string
 {
+    $ai = $this->getBackendObject($ai);
+
     while ($retry-- > 0) {
         try {
             return $this->processPrompt($ai, $prompt, $format, $options);
@@ -138,20 +150,18 @@ public function prompt(string $ai, string $prompt, ?array $format = null, ?array
     throw new \Exception("Failed to process the prompt after multiple attempts.", 1228);
 }
 
-private function processPrompt(string $ai, string $prompt, ?array $format = null, ?array $options = null): array|string
+private function processPrompt(AiBackend $ai, string $prompt, ?array $format = null, ?array $options = null): array|string
 {
     global $api;
     
-    $config = $this->getBackendConfig($ai);
-    $model = $config['model'];
-    $url = $config['url'];
-    $url = rtrim($url, '/') . '/generate';
+    $model = $ai->model;
+    $url = rtrim($ai->url, '/') . '/generate';
     
     $request = [
         'model' => $model,
         'prompt' => $prompt,
         'stream' => false,
-        'system' => $config['systemPrompt'] ?: $api->config['ai']['systemPrompt'] ?: "You are a very capable content creator.",
+        'system' => $ai->systemPrompt ?: $api->config['ai']['systemPrompt'] ?: "You are a very capable content creator.",
     ];
     
     if ($format !== null) {
@@ -161,32 +171,25 @@ private function processPrompt(string $ai, string $prompt, ?array $format = null
     if ($options !== null) {
         $request['options'] = $options;
     }
-    if (isset($config['think'])) {
-        $request['think'] = (bool) $config['think'];
+    if ($ai->think !== null) {
+        $request['think'] = (bool) $ai->think;
     }
     
-    $data = $this->httpRequest($url, $request, $model);
+    if (!$ai->acquireLock()) {
+        throw new \Exception("Failed to acquire concurrency lock for $ai.", 1241);
+    }
+    try {
+        $data = $this->httpRequest($url, $request, $model);
+    } finally {
+        $ai->releaseLock();
+    }
     $answerRaw = $data['response'] 
     or throw new \Exception("Unexpected answer from the model: ".json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 1225);
 
     // $api->log->info('ai', "Received response from $model: " . json_encode($answerRaw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 
     if ($format === null) { // then it is serialized json
-        $answer = $answerRaw;
-        foreach($config['replace'] ?: [] as ['search' => $search, 'replace' => $replace]) {
-            $newAnswer = preg_replace($search, $replace, $answer);
-            if ($newAnswer && json_encode($newAnswer) !== false) {
-                $answer = $newAnswer;
-            } elseif ($newAnswer) {
-                $api->log->error('ai', "The regex replacement produced an unserializable result. Search: " . json_encode($search, JSON_UNESCAPED_SLASHES) . 
-                    " Replace: " . json_encode($replace, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . 
-                    " Result was: " . json_encode($newAnswer, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            } else {
-                $api->log->error('ai', "Failed to apply regex replacement on the model response. Search: " . json_encode($search, JSON_UNESCAPED_SLASHES) . 
-                    " Replace: " . json_encode($replace, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . 
-                    " Response was: " . json_encode($answerRaw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-            }
-        }
+        $answer = $ai->replaceText($answerRaw);
     } else {
 
         try {
@@ -203,19 +206,7 @@ private function processPrompt(string $ai, string $prompt, ?array $format = null
     return $answer;
 }
 
-private function getBackendConfig(string $ai): array
-{
-    global $api;
-    
-    if (!is_array($api->config['ai']['backends'][$ai])) {
-        throw new \Exception("Unknown AI backend: $ai, check that the configuration key .ai.backends.$ai exists in your Zolinga configuration.", 1222);
-    }
-    return array_merge(
-        array("type" => AiTypeEnum::OLLAMA, "model" => "llama3.2:1b"),
-        $api->config['ai']['backends']['default'], 
-        $api->config['ai']['backends'][$ai]
-    );
-}
+
 
 /**
  * Run workflow script provided as DOMDocument.

@@ -19,7 +19,7 @@ CREATE TABLE `aiEvents` (
   `created` int(10) unsigned NOT NULL,
   `uuid` varchar(128) DEFAULT NULL,
   `uuidHash` binary(20) NOT NULL,
-  `aiEvent` text NOT NULL,
+  `aiEvent` mediumtext NOT NULL,
   `status` varchar(12) NOT NULL DEFAULT 'queued',
   `start` int(10) unsigned DEFAULT NULL,
   `end` int(10) unsigned DEFAULT NULL,
