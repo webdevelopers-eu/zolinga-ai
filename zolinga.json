@@ -77,7 +77,8 @@
           "model": "llama3.2:1b",
           "replace": [{"search": "/^.*?<\\/think>\\s*/s", "replace": ""}],
           "systemPrompt": false,
-          "think": false
+          "think": false,
+          "concurrency": 1
         }
       }
     }
