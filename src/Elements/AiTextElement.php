@@ -168,6 +168,7 @@ class AiTextElement implements ListenerInterface
             $body->setAttribute($attr->name, $attr->value);
         }
 
+        $body->setAttribute('data-tag', $article->tag);
         $body->setAttribute("data-text-id", $article->id);
         $frag->appendChild($frag->ownerDocument->importNode($body, true));
     }
