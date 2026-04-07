@@ -155,7 +155,7 @@ class AiGenerator implements ListenerInterface
         if (is_string($promptList)) $promptList = [["prompt" => $promptList, "type" => "step"]];
 
         $format = $event->request['format'] ?: null;
-        $api->log->info('ai', "Processing request UUID \"{$event->uuid}\" (#{$id}) with AI '{$ai}'");
+        $api->log->info('ai', "Processing request UUID \"{$event->uuid}\" (id#{$id}) with AI '{$ai}'");
 
         $response = '';
         foreach (array_values($promptList) as $ord => $step) {
