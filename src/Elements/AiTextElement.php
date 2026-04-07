@@ -123,12 +123,12 @@ class AiTextElement implements ListenerInterface
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The server is busy. Please try again later."));
             $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
             $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks, $event->input->getAttribute("tag") ?: null);
-            $event->setStatus(ContentElementEvent::STATUS_SERVICE_UNAVAILABLE, "Article $uuid not available at this time.");
+            $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not available at this time.");
             header("Retry-After: 86400");
             http_response_code(StatusEnum::SERVICE_UNAVAILABLE->value);                
         } else {
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not found.")." (Your IP is {$_SERVER['REMOTE_ADDR']})");
-            $event->setStatus(ContentElementEvent::STATUS_GONE, "Article $uuid not found and generation not allowed.");
+            $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found and generation not allowed.");
             http_response_code(StatusEnum::GONE->value);
         }
     }
