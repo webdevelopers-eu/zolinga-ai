@@ -164,7 +164,12 @@ class AiTextModel
     {
         global $api;
 
-        $id = $api->db->query("INSERT INTO aiTexts (uuid, uuidHash, contents, triggerURL, tag, updated) VALUES (?, UNHEX(SHA1(?)), ?, ?, ?, UNIX_TIMESTAMP())", $uuid, $uuid, $contents, $triggerURL, $tag);
+        $id = $api->db->query("
+            INSERT INTO aiTexts (uuid, uuidHash, contents, triggerURL, tag, updated) 
+            VALUES (?, UNHEX(SHA1(?)), ?, ?, ?, UNIX_TIMESTAMP())
+            ON DUPLICATE KEY UPDATE contents = VALUES(contents), triggerURL = VALUES(triggerURL), tag = VALUES(tag), updated = VALUES(updated)
+        ", $uuid, $uuid, $contents, $triggerURL, $tag);
+
         if (!$id) {
             throw new \Exception("Failed to insert AI article into database.", 1225);
         }

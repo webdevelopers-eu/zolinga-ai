@@ -31,6 +31,12 @@ Restricted generation (only your office IP and localhost can trigger generation)
 - `print-only`: If present, renders the prompt pipeline as plain text instead of generating or displaying an article. Useful for debugging prompts. Each step is shown as `===type===` followed by the prompt text.
 - Additional attributes: All other attributes (such as `class`, `style`, `data-*`, etc.) will be copied to the output element.
 
+## Regeneration
+
+Append `?regenerate` to the page URL to force regeneration of an existing article. When the query parameter is present, the cached article is ignored and a new generation job is queued (the visitor sees the "server is busy" placeholder while it generates). The requester's IP must still be allowed by `allow-generate-from` (if set). The regenerated content replaces the previous version in the database.
+
+Example: `https://example.com/my-page?regenerate`
+
 ## Nested Elements
 
 The `<ai-text>` element can contain nested CMS content elements. Before the prompt is extracted and processed by the AI backend, any nested elements are first fully expanded by the CMS parser. The resulting plain text (after stripping scripts and markup) is then used as the prompt.

@@ -115,11 +115,13 @@ class AiTextElement implements ListenerInterface
 
         $article = AiTextModel::getTextModel($uuid);
         $allowedIps = $event->input->getAttribute("allow-generate-from") ?: null;
+        $allowed = !$allowedIps || $api->network->matchCidr($_SERVER['REMOTE_ADDR'], explode(',', $allowedIps));
+        $regenerate = isset($_GET['regenerate']);
 
-        if ($article) {
+        if ($article && !$regenerate) {
             $this->renderArticle($event->input, $event->output, $article);             
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
-        } elseif (!$allowedIps || $api->network->matchCidr($_SERVER['REMOTE_ADDR'], explode(',', $allowedIps))) {
+        } elseif ($allowed) {
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The server is busy. Please try again later."));
             $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
             $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks, $event->input->getAttribute("tag") ?: null);
