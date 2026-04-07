@@ -78,7 +78,8 @@ class AiApi implements ServiceInterface
         global $api;
         
         if ($this->isPromptAsyncQueued($event->uuid)) {
-            throw new \Exception("The prompt with UUID '{$event->uuid}' is already queued.", 1223);
+            $event->setStatus(AiEvent::STATUS_FOUND, "The prompt with UUID '{$event->uuid}' is already queued for processing.");
+            return $event->uuid;
         }
         
         $lastInsertId = $api->db->query("INSERT INTO aiEvents (created, uuid, uuidHash, aiEvent) VALUES (?, ?, UNHEX(SHA1(?)), ?)",
