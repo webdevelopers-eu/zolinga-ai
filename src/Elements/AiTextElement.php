@@ -201,7 +201,7 @@ class AiTextElement implements ListenerInterface
     {
         global $api;
         
-        if ($api->ai->isPromptAsyncQueued($uuid)) {
+        if ($api->ai->isPromptAsyncQueued($uuid) && !isset($_GET['regenerate'])) {
             return;
         }
         
