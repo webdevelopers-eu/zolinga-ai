@@ -118,7 +118,12 @@ class AiTextElement implements ListenerInterface
         $allowed = !$allowedIps || $api->network->matchCidr($_SERVER['REMOTE_ADDR'], explode(',', $allowedIps));
         $regenerate = isset($_GET['regenerate']);
 
-        if ($article && !$regenerate) {
+        if ($regenerate && $allowed) {
+            $api->db->query('DELETE FROM aiTexts WHERE id = ? LIMIT 1', $article?->id); // allow regeneration by deleting old article    
+            $article = null; // force regeneration below
+        }
+
+        if ($article) {
             $this->renderArticle($event->input, $event->output, $article);             
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
         } elseif ($allowed) {
