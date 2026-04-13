@@ -170,11 +170,12 @@ class AiTextModel
             ON DUPLICATE KEY UPDATE contents = VALUES(contents), triggerURL = VALUES(triggerURL), tag = VALUES(tag), updated = VALUES(updated)
         ", $uuid, $uuid, $contents, $triggerURL, $tag);
 
-        if (!$id) {
-            throw new \Exception("Failed to insert AI article into database.", 1225);
+        if (!is_numeric($id)) {
+            throw new \Exception("Failed to insert AI article uuid " . json_encode($uuid) . " into database.", 1225);
         }
 
-        return self::getTextModel($uuid);
+        return self::getTextModel($uuid)
+            ?? throw new \Exception("Failed to retrieve the created AI article #id by its uuid " . json_encode($uuid) ." from database.", 1226);
     }
 
     /**
