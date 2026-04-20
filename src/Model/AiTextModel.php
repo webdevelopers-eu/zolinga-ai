@@ -174,8 +174,19 @@ class AiTextModel
             throw new \Exception("Failed to insert AI article uuid " . json_encode($uuid) . " into database.", 1225);
         }
 
-        return self::getTextModel($uuid)
+        $model = self::getTextModel($uuid)
             ?? throw new \Exception("Failed to retrieve the created AI article #id by its uuid " . json_encode($uuid) ." from database.", 1226);
+
+        // Fire ai:text:generated event
+        $api->dispatchEvent(
+            new \Zolinga\System\Events\RequestEvent(
+                'ai:text:generated',
+                \Zolinga\System\Types\OriginEnum::INTERNAL,
+                new \ArrayObject(['id' => $model->id, 'uuid' => $uuid, 'tag' => $tag, 'triggerURL' => $triggerURL])
+            )
+        );
+
+        return $model;
     }
 
     /**

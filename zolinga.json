@@ -1,6 +1,6 @@
 {
   "name": "Zolinga AI",
-  "version": "1.1",
+  "version": "1.2",
   "description": "AI power tools and services.",
   "authors": [
     "Daniel Sevcik <danny@zolinga.net>"
@@ -52,10 +52,13 @@
       "description": "Dispatched when an AI-generated article is ready (callback from promptAsync).",
       "class": "\\Zolinga\\AI\\Events\\AiEvent",
       "origin": ["internal"]
+    },
+    {
+      "event": "ai:text:generated",
+      "description": "Dispatched when an AI text is created or updated in aiTexts table.",
+      "class": "\\Zolinga\\System\\Events\\RequestEvent",
+      "origin": ["internal"]
     }
-  ],
-
-  "webComponents": [
   ],
 
   "autoload": {
