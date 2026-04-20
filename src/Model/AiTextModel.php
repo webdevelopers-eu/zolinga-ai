@@ -178,13 +178,13 @@ class AiTextModel
             ?? throw new \Exception("Failed to retrieve the created AI article #id by its uuid " . json_encode($uuid) ." from database.", 1226);
 
         // Fire ai:text:generated event
-        $api->dispatchEvent(
-            new \Zolinga\System\Events\RequestEvent(
-                'ai:text:generated',
-                \Zolinga\System\Types\OriginEnum::INTERNAL,
-                new \ArrayObject(['id' => $model->id, 'uuid' => $uuid, 'tag' => $tag, 'triggerURL' => $triggerURL])
-            )
+        $event = new \Zolinga\System\Events\RequestEvent(
+            'ai:text:generated',
+            \Zolinga\System\Types\OriginEnum::INTERNAL,
+            new \ArrayObject(['id' => $model->id, 'uuid' => $uuid, 'tag' => $tag, 'triggerURL' => $triggerURL])
         );
+        $api->log->info('ai', "Dispatching event $event for generated AI text model with id #{$model->id} and uuid \"{$model->uuid}\"...");
+        $api->dispatchEvent($event);
 
         return $model;
     }

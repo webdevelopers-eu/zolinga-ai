@@ -118,6 +118,7 @@ class AiGenerator implements ListenerInterface
             $retry = false;
             try {
                 $this->prompt($id, $event);
+                $api->log->info('ai', "Dispatching $event...");
                 $event->dispatch();
                 $api->db->query("DELETE FROM aiEvents WHERE id = ?", $id);
             } catch (QcException $e) {
