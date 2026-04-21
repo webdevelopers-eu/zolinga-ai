@@ -214,6 +214,13 @@ class AiTextElement implements ListenerInterface
             'ai' => $ai,
             'tag' => $tag,
             'prompt' => $list,
+            // Make the articles maximally variable so they are not
+            // treated as duplicates by search engines.
+            'options' => [
+                'temperature' => 0.9,
+                'repeat_penalty' => 1.3,
+                'presence_penalty' => 0.6
+            ],
             'triggerURL' => $api->url->getCurrentUrl(),
             'removeInvalidLinks' => $removeInvalidLinks
         ]);
