@@ -298,7 +298,7 @@ private function httpRequest(string $url, array $request, string $model): array
     
     $basicAuth = $user && $pass ? base64_encode("$user:$pass") : null;
     $this->log($request, "Request to $urlSafe");
-    $raw = json_encode($request, JSON_UNESCAPED_SLASHES)
+    $raw = json_encode($request, JSON_UNESCAPED_SLASHES | JSON_FORCE_OBJECT)
         or throw new \Exception("Failed to encode the request to JSON: " . json_last_error_msg(), 1220);
     
     $timer = microtime(true);
