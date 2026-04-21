@@ -1,6 +1,6 @@
 {
   "name": "Zolinga AI",
-  "version": "1.2",
+  "version": "1.3",
   "description": "AI power tools and services.",
   "authors": [
     "Daniel Sevcik <danny@zolinga.net>"
@@ -12,7 +12,7 @@
     {
       "description": "AI service.",
       "service": "ai",
-      "class": "\\Zolinga\\AI\\Service\\AiApi",
+      "class": "\\Zolinga\\AI\\Service\\AiService",
       "origin": [
         "internal"
       ]

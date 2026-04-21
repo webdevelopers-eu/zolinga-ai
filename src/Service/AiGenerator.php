@@ -17,33 +17,33 @@ class AiGenerator implements ListenerInterface
     private ?int $startTime = null;
 
     /**
-    * Handles the generation process triggered by a CLI request.
-    *
-    * It AI-generates contents all $api->ai->promptAsync() requests that are queued in the database.
-    *
-    * Process all queued AI prompts. If use specified --loop option on command line
-    * it will keep processing prompts and watching for new ones indefinitely.
-    * 
-    * Example: ./bin/zolinga ai:generate --loop
-    *
-    * --loop
-    *    If set, run indefinitely checking for new prompts every 5 seconds.
-    *
-    * --timeLimit=N
-    *    If set, exit approximately after N minutes (will let last prompt finish).
-    * 
-    * --uuid=UUID
-    *    If set, process only the prompt with the specified UUID and exit.
-    *
-    * Only one instance of this process can run at a time. If another instance is running
-    * it will exit immediately.
-    *
-    * @param CliRequestResponseEvent $event The event object containing the CLI request and response.
-    */
+     * Handles the generation process triggered by a CLI request.
+     *
+     * It AI-generates contents all $api->ai->promptAsync() requests that are queued in the database.
+     *
+     * Process all queued AI prompts. If use specified --loop option on command line
+     * it will keep processing prompts and watching for new ones indefinitely.
+     * 
+     * Example: ./bin/zolinga ai:generate --loop
+     *
+     * --loop
+     *    If set, run indefinitely checking for new prompts every 5 seconds.
+     *
+     * --timeLimit=N
+     *    If set, exit approximately after N minutes (will let last prompt finish).
+     * 
+     * --uuid=UUID
+     *    If set, process only the prompt with the specified UUID and exit.
+     *
+     * Only one instance of this process can run at a time. If another instance is running
+     * it will exit immediately.
+     *
+     * @param CliRequestResponseEvent $event The event object containing the CLI request and response.
+     */
     public function onGenerate(CliRequestResponseEvent $event)
     {
         global $api;
-        
+
         $loop = (bool) ($event->request['loop'] ?? false);
         $this->timeLimit = $event->request['timeLimit'] ?? 0 ? 60 * (int) $event->request['timeLimit'] : null;
         $this->startTime = time();
@@ -60,12 +60,12 @@ class AiGenerator implements ListenerInterface
             }
             return;
         }
-        
+
         if ($api->registry->acquireLock('ai:generate', 0)) {
             do {
                 $this->processQueuedAll();
             } while ($loop && !sleep(5) && !$this->isTimeOver());
-            
+
             $event->setStatus(RequestResponseEvent::STATUS_OK, "Prompts processed.");
             $api->registry->releaseLock('ai:generate');
         } else {
@@ -80,13 +80,13 @@ class AiGenerator implements ListenerInterface
         }
         return false;
     }
-    
+
     private function processQueuedAll(): void
     {
         global $api;
         do {
             $id = $api->db->query(
-                "SELECT id FROM aiEvents WHERE status = ? ORDER BY created DESC, id DESC LIMIT 1", 
+                "SELECT id FROM aiEvents WHERE status = ? ORDER BY created DESC, id DESC LIMIT 1",
                 PromptStatusEnum::QUEUED
             )['id'];
 
@@ -94,8 +94,8 @@ class AiGenerator implements ListenerInterface
 
             // Try to lock the row by setting the status to 'processing'
             $count = $api->db->query(
-                "UPDATE aiEvents SET status = ?, start = ? WHERE id = ? AND status = 'queued'", 
-                PromptStatusEnum::PROCESSING, 
+                "UPDATE aiEvents SET status = ?, start = ? WHERE id = ? AND status = 'queued'",
+                PromptStatusEnum::PROCESSING,
                 time(),
                 $id
             );
@@ -104,17 +104,17 @@ class AiGenerator implements ListenerInterface
             }
         } while ($id && !$this->isTimeOver());
     }
-    
+
     private function processRequest(int $id): void
     {
         global $api;
-        
+
         $row = $api->db->query("SELECT * FROM aiEvents WHERE id = ?", $id)->fetchAssoc();
         $eventData = json_decode($row['aiEvent'], true);
         $event = AiEvent::fromArray($eventData);
         $retriesLeft = 3;
-        
-        do {                
+
+        do {
             $retry = false;
             try {
                 $this->prompt($id, $event);
@@ -127,44 +127,46 @@ class AiGenerator implements ListenerInterface
             } catch (\Throwable $e) {
                 $api->log->error('ai', "Error processing request {$id}: {$e->getMessage()}, trace {$e->getTraceAsString()}");
                 $api->db->query(
-                    "UPDATE aiEvents SET status = ?, end = ? WHERE id = ?", 
-                    PromptStatusEnum::ERROR, 
+                    "UPDATE aiEvents SET status = ?, end = ? WHERE id = ?",
+                    PromptStatusEnum::ERROR,
                     time(),
                     $id
                 );
             }
         } while ($retry);
     }
-    
+
     /**
-    * Sends a request to the Ollama AI backend with the provided prompt and model.
-    * 
-    * Decodes the JSON response and stores it in the event's response data.
-    *
-    * @param int $id The ID of the request being processed.
-    * @param AiEvent $event The event containing the request details.
-    * @global object $api The global API object containing configuration and logging utilities.
-    * @throws JsonException If the JSON decoding of the response fails.
-    */
+     * Sends a request to the Ollama AI backend with the provided prompt and model.
+     * 
+     * Decodes the JSON response and stores it in the event's response data.
+     *
+     * @param int $id The ID of the request being processed.
+     * @param AiEvent $event The event containing the request details.
+     * @global object $api The global API object containing configuration and logging utilities.
+     * @throws JsonException If the JSON decoding of the response fails.
+     */
     private function prompt(int $id, AiEvent $event): void
     {
         global $api;
-        
+
         $ai = $event->request['ai']; // for now always 'ollama'
 
         $promptList = $event->request['prompt'];
         if (is_string($promptList)) $promptList = [["prompt" => $promptList, "type" => "step"]];
 
         $format = $event->request['format'] ?: null;
+        $options = $event->request['options'] ?: [];
         $api->log->info('ai', "Processing request UUID \"{$event->uuid}\" (id#{$id}) with AI '{$ai}'");
 
         $response = '';
         foreach (array_values($promptList) as $ord => $step) {
+            $stepOptions = array_merge($options, $step['options'] ?? []);
             $stepPrompt = str_replace("{{input}}", $response, $step['prompt']);
 
             switch ($step['type'] ?? 'step') {
                 case 'qc':
-                    $answer = $this->runQcCheck($ai, $stepPrompt, $response);
+                    $answer = $this->runQcCheck($ai, $stepPrompt, $response, $stepOptions);
                     if ($answer['compliant']) {
                         $api->log->info('ai', "Pipeline[#$ord/{$step['type']}]: QC check passed for request UUID \"{$event->uuid}\" (#{$id}).");
                     } else {
@@ -174,7 +176,7 @@ class AiGenerator implements ListenerInterface
                     break;
                 case 'step':
                 default:
-                    $response = $api->ai->prompt($ai, $stepPrompt, $format);
+                    $response = $api->ai->prompt($ai, $stepPrompt, $format, $stepOptions);
                     $api->log->info('ai', "Pipeline[#$ord/{$step['type']}]: Step completed for request UUID \"{$event->uuid}\" (#{$id}). Response: " . substr(json_encode($response), 0, 100) . "...");
             }
         }
@@ -183,30 +185,30 @@ class AiGenerator implements ListenerInterface
         $event->response['data'] = $response;
     }
 
-    private function runQcCheck(string $ai, string $prompt, string $input): array
+    private function runQcCheck(string $ai, string $prompt, string $input, array $options = []): array
     {
         global $api;
 
         $format = [
-                    "type" => "object",
-                    "properties" => [
-                        "compliant" => [
-                            "type" => "boolean"
-                        ],
-                        "explanation" => [
-                            "type" => "string"
-                        ]
-                    ],
-                    "required" => ["compliant", "explanation"]
-                ];
+            "type" => "object",
+            "properties" => [
+                "compliant" => [
+                    "type" => "boolean"
+                ],
+                "explanation" => [
+                    "type" => "string"
+                ]
+            ],
+            "required" => ["compliant", "explanation"]
+        ];
 
         $qcTemplate = file_get_contents('module://zolinga-ai/data/qc-prompt.txt');
         $qcPrompt = str_replace(
-            ["{{test}}", "{{input}}"], 
-            [$prompt, $input], 
+            ["{{test}}", "{{input}}"],
+            [$prompt, $input],
             $qcTemplate
         );
-        $qcResponse = $api->ai->prompt($ai, $qcPrompt, $format);
+        $qcResponse = $api->ai->prompt($ai, $qcPrompt, $format, $options);
         return $qcResponse;
     }
 }

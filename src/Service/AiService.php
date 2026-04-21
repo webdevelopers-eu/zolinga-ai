@@ -18,7 +18,7 @@ use Zolinga\System\Events\ServiceInterface;
 * @author Daniel Sevcik <sevcik@webdevelopers.eu>
 * @date 2025-02-07
 */
-class AiApi implements ServiceInterface
+class AiService implements ServiceInterface
 {
     public function __construct()
     {
@@ -239,7 +239,7 @@ public function runWorkflow(DOMDocument $workflow, array $data): array | string
 /**
  * Run workflow script provided as a file path.
  *
- * @see Zolinga\AI\Service\AiApi::runWorkflow()
+ * @see Zolinga\AI\Service\AiService::runWorkflow()
  * 
  * @param string $file The path to the workflow XML file.
  * @param array $data Optional data to pass to the workflow.
