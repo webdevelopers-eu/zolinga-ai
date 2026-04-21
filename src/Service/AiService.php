@@ -155,11 +155,10 @@ private function processPrompt(AiBackend $ai, string $prompt, ?array $format = n
 {
     global $api;
     
-    $model = $ai->model;
     $url = rtrim($ai->url, '/') . '/generate';
     
     $request = [
-        'model' => $model,
+        'model' => $ai->model,
         'prompt' => $prompt,
         'stream' => false,
         'system' => $ai->systemPrompt ?: $api->config['ai']['systemPrompt'] ?: "You are a very capable content creator.",
@@ -169,8 +168,8 @@ private function processPrompt(AiBackend $ai, string $prompt, ?array $format = n
         $request['format'] = $format;
         $request['system'].= " Return only valid JSON format that exactly matches the schema. Do not add text, tabs, or comments. If you cannot comply, return an empty object.";
     }
-    if (!empty($options)) {
-        $request['options'] = $options;
+    if (!empty($options) || !empty($ai->options)) {
+        $request['options'] = array_merge($ai->options ?? [], $options ?? []);
     }
     if ($ai->think !== null) {
         $request['think'] = (bool) $ai->think;
@@ -180,14 +179,14 @@ private function processPrompt(AiBackend $ai, string $prompt, ?array $format = n
         throw new \Exception("Failed to acquire concurrency lock for $ai.", 1241);
     }
     try {
-        $data = $this->httpRequest($url, $request, $model);
+        $data = $this->httpRequest($url, $request, $ai->model);
     } finally {
         $ai->releaseLock();
     }
     $answerRaw = $data['response'] 
     or throw new \Exception("Unexpected answer from the model: ".json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 1225);
 
-    // $api->log->info('ai', "Received response from $model: " . json_encode($answerRaw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+    // $api->log->info('ai', "Received response from $ai->model: " . json_encode($answerRaw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 
     if ($format === null) { // then it is serialized json
         $answer = $ai->replaceText($answerRaw);
@@ -302,7 +301,7 @@ private function httpRequest(string $url, array $request, string $model): array
         or throw new \Exception("Failed to encode the request to JSON: " . json_last_error_msg(), 1220);
     
     $timer = microtime(true);
-    $api->log->info('ai', "Asking $model ".($request['think'] ? "(thinking) " : "")."at $urlSafe (".number_format(strlen($raw))." bytes)...");
+    $api->log->info('ai', "Asking $model ".($request['think'] ? "(thinking) " : "")."at $urlSafe (".number_format(strlen($raw))." bytes), options " . json_encode($request['options'] ?? []));
     $prevSocketTimeout = ini_get('default_socket_timeout');
     ini_set('default_socket_timeout', 28800);
     $response = file_get_contents($url, false, stream_context_create([

@@ -35,6 +35,7 @@ class AiBackend
     public readonly array $replace;
     public readonly ?string $systemPrompt;
     public readonly ?bool $think;
+    public readonly ?array $options;
     public readonly int $concurrency;
 
     /** @var array<string, string> Shared across all AiBackend instances: url => lockId */
@@ -63,6 +64,7 @@ class AiBackend
         $this->model = $config['model'];
         $this->systemPrompt = is_string($config['systemPrompt'] ?? null) ? $config['systemPrompt'] : null;
         $this->think = isset($config['think']) ? (bool) $config['think'] : null;
+        $this->options = is_array($config['options'] ?? null) ? $config['options'] : null;
         $this->concurrency = max(1, (int) ($config['concurrency'] ?? 1));
 
         $replaceRaw = $config['replace'] ?? [];

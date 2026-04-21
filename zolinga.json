@@ -81,6 +81,7 @@
           "replace": [{"search": "/^.*?<\\/think>\\s*/s", "replace": ""}],
           "systemPrompt": false,
           "think": false,
+          "options": [],
           "concurrency": 1
         }
       }
