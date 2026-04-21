@@ -23,6 +23,8 @@ $resp = $api->ai->prompt(
 );
 ```
 
+If the selected backend defines `config.ai.backends.default.options` or `config.ai.backends.<name>.options`, those configured values are merged into the request too. For matching keys, the configured backend values currently override the values passed in `$api->ai->prompt()`.
+
 Structured answer:
 
 ```php
@@ -45,7 +47,7 @@ $resp = $api->ai->prompt(
 print_r($resp);
 ```
 
-`options` are forwarded directly to the configured backend. Use them for backend-specific controls such as context length or temperature.
+`options` are forwarded to the configured backend and merged with the backend's configured `options` defaults. Use them for backend-specific controls such as context length or temperature. For synchronous `$api->ai->prompt()` calls, matching keys from the configured backend currently take precedence.
 
 ## Asynchronous AI API
 
@@ -58,7 +60,7 @@ Use `$api->ai->promptAsync()` to queue a request for background processing. The 
 | `ai` | string | yes | `default` | Backend name from `config.ai.backends.*` |
 | `prompt` | string or array | yes | `[]` | A plain prompt string, or an array of pipeline steps (see below) |
 | `format` | array or null | no | `null` | JSON Schema for structured output, or `null` for plain text |
-| `options` | array | no | `[]` | Default backend options applied to every step and QC check in the request |
+| `options` | array | no | `[]` | Default backend options applied to every step and QC check in the request before any step-level overrides |
 | `removeInvalidLinks` | bool | no | `false` | Strip invalid links from generated HTML |
 
 Pipeline step format (when `prompt` is an array):
@@ -105,7 +107,7 @@ Step-level backend overrides are also supported:
 ]
 ```
 
-If request-level `options` are present, each step's `options` are merged on top of them. Matching keys in the step override the request-level defaults.
+If request-level `options` are present, each step's `options` are merged on top of them. Matching keys in the step override the request-level defaults. The merged step options are then passed to `$api->ai->prompt()`, where configured backend `options` are also applied.
 
 ### AiEvent Response Format
 

@@ -133,7 +133,7 @@ public function isPromptAsyncQueued(string $uuid): bool
 * @param AiBackend|string $ai The backend to use as defined in the configuration.
 * @param string $prompt The prompt to send.
 * @param array|null $format Expected output format specified as JSON schema or "json" or null. See Oolama API documentation.
-* @param array|null $options Optional parameters to customize the prompt. E.g. "{num_ctx: 4096}". See Ollama options.
+* @param array|null $options Optional request options. They are merged with the configured backend's `options` array if present. Matching keys from the backend configuration currently take precedence. E.g. "{num_ctx: 4096}". See Ollama options.
 * @param int $retry The number of times to retry the request in case of failure.
 * @return array|string The response from the AI model - if the $format is set to "json" or JSON schema, the response is decoded array, otherwise it is a string.
 */

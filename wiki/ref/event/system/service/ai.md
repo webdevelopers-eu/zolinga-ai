@@ -7,7 +7,7 @@ AI service providing synchronous prompting, async prompt queuing, backend commun
 - **Module:** zolinga-ai
 - **Event:** `system:service:ai`
 
-The service forwards backend-specific `options` to the configured AI backend. For queued async pipelines you can define default request-level options and override them per `step` or `qc` item.
+The service forwards backend-specific `options` to the configured AI backend. You can define backend defaults in `config.ai.backends.<name>.options` and also pass `options` directly to `$api->ai->prompt()`. For synchronous `prompt()` calls these two arrays are merged, and matching keys from the configured backend currently override the same keys passed in the method call. For queued async pipelines you can define default request-level options and override them per `step` or `qc` item.
 
 ## Synchronous Usage
 
@@ -33,6 +33,8 @@ $answer = $api->ai->prompt(
 	]
 );
 ```
+
+If the selected backend also defines `config.ai.backends.default.options` or `config.ai.backends.<name>.options`, those configured values are sent too. For matching keys, the backend configuration currently wins over the values passed in `$api->ai->prompt()`.
 
 Structured response:
 
@@ -75,7 +77,7 @@ bin/zolinga ai:generate
 - `ai`: Backend name from `config.ai.backends.*`.
 - `prompt`: A plain prompt string, or a pipeline array.
 - `format`: JSON schema array for structured output, or `null` for plain text.
-- `options`: Optional backend options applied to every prompt in the request.
+- `options`: Optional backend options applied to every prompt in the request before any step-level overrides are applied.
 - `removeInvalidLinks`: Optional flag used by article generation handlers.
 
 ### Pipeline Step Format
@@ -86,7 +88,7 @@ When `prompt` is an array, each item may define:
 - `type`: `step` or `qc`.
 - `options`: Optional backend options for that specific step.
 
-Step options are merged on top of request-level options, so step-level values override the defaults for matching keys. The same merge behavior applies to `qc` steps.
+Step options are merged on top of request-level options, so step-level values override the defaults for matching keys. The same merge behavior applies to `qc` steps. The merged step options are then passed to `$api->ai->prompt()`, where configured backend `options` are still applied as the final layer.
 
 Example:
 
