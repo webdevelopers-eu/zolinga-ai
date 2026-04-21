@@ -169,7 +169,7 @@ private function processPrompt(AiBackend $ai, string $prompt, ?array $format = n
         $request['system'].= " Return only valid JSON format that exactly matches the schema. Do not add text, tabs, or comments. If you cannot comply, return an empty object.";
     }
     if (!empty($options) || !empty($ai->options)) {
-        $request['options'] = array_merge($ai->options ?? [], $options ?? []);
+        $request['options'] = array_merge($options ?? [], $ai->options ?? []);
     }
     if ($ai->think !== null) {
         $request['think'] = (bool) $ai->think;
