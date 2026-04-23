@@ -29,7 +29,7 @@ Restricted generation (only your office IP and localhost can trigger generation)
 - `remove-invalid-links`: If set to `true`, invalid links found in the generated article will be removed before the article is saved. Use this when you want link cleanup during article generation.
 - `tag`: An optional tag to associate with the generated article. Stored in the database alongside the article and can be used for categorization, filtering, or later retrieval of related articles. The value is stored as-is in the DB `tag` column. Can be used as a version marker (e.g. `tag="2.0"`) to force regeneration by changing the UUID fingerprint indirectly, or simply to group articles by topic.
 - `print-only`: If present, renders the prompt pipeline as plain text instead of generating or displaying an article. Useful for debugging prompts. Each step is shown as `===type===` followed by the prompt text.
-- Additional attributes: All other attributes (such as `class`, `style`, `data-*`, etc.) will be copied to the output element.
+- Output attributes copied from `<ai-text>`: Only `class`, `style`, `id`, and any `data-*` attributes are copied to the rendered output element.
 
 ## Regeneration
 
@@ -117,12 +117,13 @@ If `remove-invalid-links="true"` is set, link validation and cleanup happens dur
 
 When the article is generated, the content will be wrapped in an `<article>` element (or the element specified by the `element` attribute). The output element will have:
 
-- `data-text-id`: The unique identifier of the generated content
-- All attributes from the original `<ai-text>` element except for `ai`, `uuid`, and `element`
+- `data-text-id`: The database ID of the generated text record
+- `data-tag`: The stored article tag value
+- Copied attributes from `<ai-text>` limited to `class`, `style`, `id`, and any `data-*` attributes
 
 Example output:
 ```html
-<article data-text-id="ai:article:a1b2c3d4e5f6" class="my-custom-class" remove-invalid-links="true">
+<article data-text-id="123" data-tag="2.0" class="my-custom-class" data-analytics="ai-generated">
   <h1>Generated Title</h1>
   <p>Generated content paragraph...</p>
 </article>

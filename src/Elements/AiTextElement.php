@@ -169,10 +169,10 @@ class AiTextElement implements ListenerInterface
         // Copy all attributes from the original <ai-text> element
         // except for "ai" and "uuid"
         foreach ($input->attributes as $attr) {
-            if (in_array($attr->name, ["ai", "element", "uuid"])) {
-                continue;
+            // Only select attributes - and all data-*
+            if (in_array(explode('-', $attr->name, 2)[0], ["class", "style", "id", "data"])) {
+                $body->setAttribute($attr->name, $attr->value);
             }
-            $body->setAttribute($attr->name, $attr->value);
         }
 
         $body->setAttribute('data-tag', $article->tag);
