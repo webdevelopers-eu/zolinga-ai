@@ -12,6 +12,15 @@ Example:
 </ai-text>
 ```
 
+Example with prompt variation:
+
+```html
+<ai-text ai="default" uuid="campaign:summer-2026">
+    Write a landing page headline for our summer launch.
+    Prefer words built from these letters: {{random|8}}
+</ai-text>
+```
+
 Restricted generation (only your office IP and localhost can trigger generation):
 
 ```html
@@ -53,8 +62,34 @@ This allows you to dynamically construct prompts using other content elements:
 The expansion order is:
 1. Nested elements inside `<ai-text>` are expanded first by the CMS parser.
 2. Scripts are stripped from the expanded content.
-3. The remaining text content is used as the AI prompt.
+3. Prompt variables such as `{{random|n}}` are expanded.
 4. The `<ai-text>` element itself is then processed and replaced with the generated article.
+
+## Prompt Variables
+
+The extracted prompt supports this built-in variable:
+
+- `{{random|n}}`: Replaced with a random lowercase alphabetic string of length `n`.
+
+Use it when you want the prompt to vary between generations, for example to encourage different title shapes, keyword mixes, or phrasing.
+
+Example:
+
+```html
+<ai-text ai="default" uuid="blog:trademark-monitoring">
+    <step>
+        Write a long-form article about trademark monitoring.
+        Use these random letters as a title constraint: {{random|10}}
+    </step>
+</ai-text>
+```
+
+Notes:
+
+- Each `{{random|n}}` occurrence is expanded independently.
+- Expansion happens before the fallback auto-generated UUID is calculated.
+- If you use `{{random|n}}` without an explicit `uuid`, the prompt fingerprint changes on each request, which can create a different generated article UUID each time.
+- For stable caching with controlled prompt variation, pair `{{random|n}}` with an explicit `uuid`.
 
 ## Multi-Step Pipeline
 

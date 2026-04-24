@@ -21,6 +21,8 @@ use Zolinga\System\Types\StatusEnum;
 * Each <step> generates content (subsequent steps receive previous output via {{input}}).
 * Each <qc> validates the current output against its criteria. On QC failure the pipeline retries up to 3 times.
 *
+* The variable {{random|n}} will be replaced with a random string of length n to increase variability and avoid duplicate content.
+*
 * Attributes:
 * - ai: Optional. The AI backend to use. Default is "default".
 * - uuid: Optional. The unique identifier of the article. If not provided, hash of the prompt will be used.
@@ -89,7 +91,20 @@ class AiTextElement implements ListenerInterface
             $scripts->item($i)?->parentNode->removeChild($scripts->item($i));
         }
 
-        return $contentDom->textContent;
+        $prompt = $contentDom->textContent;
+
+        // Replace {{random|n}} with random string of length n
+        $prompt = preg_replace_callback('/{{random\|(\d+)}}/', function($matches) {
+            $length = (int)$matches[1];
+            $characters = 'abcdefghijklmnopqrstuvwxyz';
+            $randomString = '';
+            for ($i = 0; $i < $length; $i++) {
+                $randomString .= $characters[random_int(0, strlen($characters) - 1)];
+            }
+            return $randomString;
+        }, $prompt);
+
+        return $prompt;
     }
 
     /**
