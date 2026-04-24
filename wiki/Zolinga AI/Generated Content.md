@@ -49,9 +49,12 @@ Prompt variation example:
 
 ## Prompt Variables
 
-The prompt text supports `{{random|n}}`.
+The prompt text supports `{{random|n}}`, `{{random|n|charset}}`, and `{{random|n|charset|separator}}`.
 
-- It is replaced with a random lowercase alphabetic string of length `n`.
+- `{{random|n}}` uses the default character set `ABCDEFGHIJKLMNOPQRSTUVWXYZ`.
+- `{{random|n|charset}}` uses the characters you provide in `charset`.
+- `{{random|n|charset|separator}}` inserts `separator` between generated characters.
+- `{{random|n||separator}}` keeps the default character set and inserts `separator` between generated characters.
 - It is useful when you want each regeneration to nudge the model toward different wording or structure.
 - It is best used together with a fixed `uuid` when you want prompt variation without producing a new cached article key on every request.
 
@@ -71,7 +74,18 @@ Example:
 </ai-text>
 ```
 
-If `uuid` is omitted, the generated article ID is derived from the expanded prompt. Because `{{random|n}}` changes before that fingerprint is computed, omitting `uuid` can produce a different cached article ID on each request.
+Example with separator:
+
+```html
+<ai-text ai="creative" uuid="brand-article-acme-seed">
+  <step>
+    Write a blog post about trademark monitoring for ACME.
+    Use this dash-separated mnemonic seed somewhere in the title: {{random|5||-}}
+  </step>
+</ai-text>
+```
+
+If `uuid` is omitted, the generated article ID is derived from the expanded prompt. Because any `{{random|...}}` form changes before that fingerprint is computed, omitting `uuid` can produce a different cached article ID on each request.
 
 ## How It Works
 

@@ -29,6 +29,14 @@ Example with custom character set:
 </ai-text>
 ```
 
+Example with separator:
+
+```html
+<ai-text ai="default" uuid="campaign:summer-2026-spaced-seed">
+    Write a headline inspired by this letter pattern: {{random|5||-}}
+</ai-text>
+```
+
 Restricted generation (only your office IP and localhost can trigger generation):
 
 ```html
@@ -70,7 +78,7 @@ This allows you to dynamically construct prompts using other content elements:
 The expansion order is:
 1. Nested elements inside `<ai-text>` are expanded first by the CMS parser.
 2. Scripts are stripped from the expanded content.
-3. Prompt variables such as `{{random|n}}` and `{{random|n|charset}}` are expanded.
+3. Prompt variables such as `{{random|n}}`, `{{random|n|charset}}`, and `{{random|n|charset|separator}}` are expanded.
 4. The `<ai-text>` element itself is then processed and replaced with the generated article.
 
 ## Prompt Variables
@@ -79,6 +87,8 @@ The extracted prompt supports this built-in variable:
 
 - `{{random|n}}`: Replaced with a random string of length `n` using the default character set `ABCDEFGHIJKLMNOPQRSTUVWXYZ`.
 - `{{random|n|charset}}`: Replaced with a random string of length `n` using the characters provided in `charset`.
+- `{{random|n|charset|separator}}`: Replaced with a random string of length `n` using the characters provided in `charset`, joined with `separator` between each generated character.
+- `{{random|n||separator}}`: Uses the default character set `ABCDEFGHIJKLMNOPQRSTUVWXYZ` and inserts `separator` between each generated character.
 
 Use it when you want the prompt to vary between generations, for example to encourage different title shapes, keyword mixes, or phrasing.
 
@@ -103,12 +113,22 @@ Example with a restricted alphabet:
 </ai-text>
 ```
 
+Example with separator:
+
+```html
+<ai-text ai="default" uuid="blog:spaced-initials">
+    <step>
+        Generate a mnemonic seed with dash-separated letters: {{random|5||-}}
+    </step>
+</ai-text>
+```
+
 Notes:
 
-- Each `{{random|n}}` or `{{random|n|charset}}` occurrence is expanded independently.
+- Each `{{random|n}}`, `{{random|n|charset}}`, or `{{random|n|charset|separator}}` occurrence is expanded independently.
 - Expansion happens before the fallback auto-generated UUID is calculated.
-- If you use `{{random|n}}` or `{{random|n|charset}}` without an explicit `uuid`, the prompt fingerprint changes on each request, which can create a different generated article UUID each time.
-- For stable caching with controlled prompt variation, pair `{{random|n}}` or `{{random|n|charset}}` with an explicit `uuid`.
+- If you use `{{random|n}}`, `{{random|n|charset}}`, or `{{random|n|charset|separator}}` without an explicit `uuid`, the prompt fingerprint changes on each request, which can create a different generated article UUID each time.
+- For stable caching with controlled prompt variation, pair `{{random|n}}`, `{{random|n|charset}}`, or `{{random|n|charset|separator}}` with an explicit `uuid`.
 
 ## Multi-Step Pipeline
 
