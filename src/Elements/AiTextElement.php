@@ -2,6 +2,7 @@
 
 namespace Zolinga\AI\Elements;
 
+use Exception;
 use Parsedown;
 use Zolinga\AI\Events\AiEvent;
 use Zolinga\AI\Model\AiTextModel;
