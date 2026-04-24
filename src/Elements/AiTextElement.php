@@ -166,8 +166,12 @@ class AiTextElement implements ListenerInterface
 
     private function renderArticle(\DOMElement $input, \DOMDocumentFragment $frag, AiTextModel $article): void
     {
+        global $api;
+
         $doc = new \DOMDocument();
-        $doc->loadXML($article->contents);
+        if (!@$doc->loadXML($article->contents)) { 
+            $api->logger->error("Failed to parse article content as XML: " . libxml_get_last_error()->message);
+        }
         $body = $doc->getElementsByTagName('article')->item(0);
 
         $rootTagName = $input->getAttribute('element') ?: 'article';
