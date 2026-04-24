@@ -21,6 +21,14 @@ Example with prompt variation:
 </ai-text>
 ```
 
+Example with custom character set:
+
+```html
+<ai-text ai="default" uuid="campaign:summer-2026-digits">
+    Write three short promo codes inspired by this seed: {{random|6|0123456789}}
+</ai-text>
+```
+
 Restricted generation (only your office IP and localhost can trigger generation):
 
 ```html
@@ -62,14 +70,15 @@ This allows you to dynamically construct prompts using other content elements:
 The expansion order is:
 1. Nested elements inside `<ai-text>` are expanded first by the CMS parser.
 2. Scripts are stripped from the expanded content.
-3. Prompt variables such as `{{random|n}}` are expanded.
+3. Prompt variables such as `{{random|n}}` and `{{random|n|charset}}` are expanded.
 4. The `<ai-text>` element itself is then processed and replaced with the generated article.
 
 ## Prompt Variables
 
 The extracted prompt supports this built-in variable:
 
-- `{{random|n}}`: Replaced with a random lowercase alphabetic string of length `n`.
+- `{{random|n}}`: Replaced with a random string of length `n` using the default character set `ABCDEFGHIJKLMNOPQRSTUVWXYZ`.
+- `{{random|n|charset}}`: Replaced with a random string of length `n` using the characters provided in `charset`.
 
 Use it when you want the prompt to vary between generations, for example to encourage different title shapes, keyword mixes, or phrasing.
 
@@ -84,12 +93,22 @@ Example:
 </ai-text>
 ```
 
+Example with a restricted alphabet:
+
+```html
+<ai-text ai="default" uuid="blog:coupon-seeds">
+    <step>
+        Generate a coupon seed using only A, B, C, 1, 2, and 3: {{random|12|ABC123}}
+    </step>
+</ai-text>
+```
+
 Notes:
 
-- Each `{{random|n}}` occurrence is expanded independently.
+- Each `{{random|n}}` or `{{random|n|charset}}` occurrence is expanded independently.
 - Expansion happens before the fallback auto-generated UUID is calculated.
-- If you use `{{random|n}}` without an explicit `uuid`, the prompt fingerprint changes on each request, which can create a different generated article UUID each time.
-- For stable caching with controlled prompt variation, pair `{{random|n}}` with an explicit `uuid`.
+- If you use `{{random|n}}` or `{{random|n|charset}}` without an explicit `uuid`, the prompt fingerprint changes on each request, which can create a different generated article UUID each time.
+- For stable caching with controlled prompt variation, pair `{{random|n}}` or `{{random|n|charset}}` with an explicit `uuid`.
 
 ## Multi-Step Pipeline
 

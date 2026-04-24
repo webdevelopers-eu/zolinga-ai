@@ -157,7 +157,7 @@ class AiGenerator implements ListenerInterface
 
         $format = $event->request['format'] ?: null;
         $options = $event->request['options'] ?: [];
-        $api->log->info('ai', "Processing request UUID \"{$event->uuid}\" (id#{$id}) with AI '{$ai}'");
+        $api->log->info('ai', "💬 Processing request UUID \"{$event->uuid}\" (id#{$id}) with AI '{$ai}'");
 
         $response = '';
         foreach (array_values($promptList) as $ord => $step) {
