@@ -135,23 +135,25 @@ public function isPromptAsyncQueued(string $uuid): bool
 * @param array|null $format Expected output format specified as JSON schema or "json" or null. See Oolama API documentation.
 * @param array|null $options Optional request options. They are merged with the configured backend's `options` array if present. Matching keys from the backend configuration currently take precedence. E.g. "{num_ctx: 4096}". See Ollama options.
 * @param int $retry The number of times to retry the request in case of failure.
+* @param bool $debug If true, enables debug logging for the generation process.
 * @return array|string The response from the AI model - if the $format is set to "json" or JSON schema, the response is decoded array, otherwise it is a string.
 */
-public function prompt(AiBackend|string $ai, string $prompt, ?array $format = null, ?array $options = null, int $retry = 6): array|string
+public function prompt(AiBackend|string $ai, string $prompt, ?array $format = null, ?array $options = null, int $retry = 6, bool $debug = false): array|string
 {
+    global $api;
     $ai = $this->getBackendObject($ai);
 
     while ($retry-- > 0) {
         try {
-            return $this->processPrompt($ai, $prompt, $format, $options);
+            return $this->processPrompt($ai, $prompt, $format, $options, $debug);
         } catch (\Exception $e) {
-            trigger_error("Error processing prompt ($retry attempts left): " . $e->getMessage() . "trace, " . $e->getTraceAsString(), E_USER_WARNING);
+            $api->logger->error("ai", "Error processing prompt ($retry attempts left): " . $e->getMessage() . "trace, " . $e->getTraceAsString());
         }
     }
     throw new \Exception("Failed to process the prompt after multiple attempts.", 1228);
 }
 
-private function processPrompt(AiBackend $ai, string $prompt, ?array $format = null, ?array $options = null): array|string
+private function processPrompt(AiBackend $ai, string $prompt, ?array $format = null, ?array $options = null, bool $debug = false): array|string
 {
     global $api;
     
@@ -184,9 +186,11 @@ private function processPrompt(AiBackend $ai, string $prompt, ?array $format = n
         $ai->releaseLock();
     }
     $answerRaw = $data['response'] 
-    or throw new \Exception("Unexpected answer from the model: ".json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 1225);
+        or throw new \Exception("Unexpected answer from the model: ".json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 1225);
 
-    // $api->log->info('ai', "Received response from $ai->model: " . json_encode($answerRaw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+    if ($debug) {
+        $api->log->info('ai', "Received response from $ai->model: " . json_encode($answerRaw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+    }
 
     if ($format === null) { // then it is serialized json
         $answer = $ai->replaceText($answerRaw);

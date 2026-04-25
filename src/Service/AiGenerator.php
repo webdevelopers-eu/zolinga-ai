@@ -15,6 +15,7 @@ class AiGenerator implements ListenerInterface
 {
     private ?int $timeLimit = 0;
     private ?int $startTime = null;
+    private bool $debug = false;
 
     /**
      * Handles the generation process triggered by a CLI request.
@@ -34,6 +35,9 @@ class AiGenerator implements ListenerInterface
      * 
      * --uuid=UUID
      *    If set, process only the prompt with the specified UUID and exit.
+     * 
+     * --debug
+     *   If set, enables debug logging for the generation process.
      *
      * Only one instance of this process can run at a time. If another instance is running
      * it will exit immediately.
@@ -47,6 +51,7 @@ class AiGenerator implements ListenerInterface
         $loop = (bool) ($event->request['loop'] ?? false);
         $this->timeLimit = $event->request['timeLimit'] ?? 0 ? 60 * (int) $event->request['timeLimit'] : null;
         $this->startTime = time();
+        $this->debug = (bool) ($event->request['debug'] ?? false);
 
         if ($event->request['uuid'] ?? null) {
             // If a specific UUID is provided, process only that one
@@ -177,7 +182,7 @@ class AiGenerator implements ListenerInterface
                     break;
                 case 'step':
                 default:
-                    $response = $api->ai->prompt($ai, $stepPrompt, $format, $stepOptions);
+                    $response = $api->ai->prompt($ai, $stepPrompt, $format, $stepOptions, debug: $this->debug);
                     $api->log->info('ai', "Pipeline[#$ord/{$step['type']}]: Step completed for request UUID \"{$event->uuid}\" (#{$id}). Response: " . substr(json_encode($response), 0, 100) . "...");
             }
         }
