@@ -1,7 +1,7 @@
 ## Syntax
 
 ```bash
-bin/zolinga ai:generate [--loop] [--timeLimit=N] [--uuid=UUID]
+bin/zolinga ai:generate [--loop] [--timeLimit=N] [--uuid=UUID] [--debug]
 ```
 
 ## Description
@@ -15,7 +15,7 @@ Only one instance can run at a time — if another is already running, the comma
 - `--loop` — Run indefinitely, checking for new prompts every 5 seconds.
 - `--timeLimit=N` — Exit after approximately N minutes (the last prompt in progress will finish).
 - `--uuid=UUID` — Process only the prompt with the specified UUID and exit. Bypasses the lock check.
-- `--debug` — Enable debug logging for AI generation. Use this to see detailed information about prompt processing, backend calls, and results.
+- `--debug` — Enable debug logging for AI generation. Use this to see detailed information about prompt processing, backend calls, and results. Messages are logged into standard logger channels and also stored in `data/zolinga-ai/ai.log` for later review. Note: the global config setting `config.ai.log` enables the same logging for every run, while `--debug` enables it only for the current run.
 
 ## Examples
 

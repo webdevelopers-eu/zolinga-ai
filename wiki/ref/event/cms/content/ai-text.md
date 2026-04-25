@@ -248,6 +248,8 @@ Example output:
 
 In order to generate the article on the background run the `./bin/zolinga ai:generate` command. You can run it regularly from the cron job to process all queued articles. The process will finish all queued articles and exit. Or you can run it with the `--loop` option to run it in the loop continuously.
 
+If you need detailed debug logs for background generation, either run `./bin/zolinga ai:generate --debug` for one debug session or enable the global config setting `config.ai.log` to log every run into `data/zolinga-ai/ai.log`.
+
 To run the command in the loop, use the following command:
 ```bash
 ./bin/zolinga ai:generate --loop

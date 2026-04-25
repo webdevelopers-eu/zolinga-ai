@@ -51,7 +51,7 @@ print_r($resp);
 
 ## Asynchronous AI API
 
-Use `$api->ai->promptAsync()` to queue a request for background processing. The request is stored in the database and processed later by `bin/zolinga ai:generate`. When done, your callback event is dispatched.
+Use `$api->ai->promptAsync()` to queue a request for background processing. The request is stored in the database and processed later by `bin/zolinga ai:generate`. When done, your callback event is dispatched. For detailed background debug logs enable the global config setting `config.ai.log` to log every run into `data/zolinga-ai/ai.log`.
 
 ### AiEvent Request Format
 
