@@ -15,6 +15,7 @@ Only one instance can run at a time — if another is already running, the comma
 - `--loop` — Run indefinitely, checking for new prompts every 5 seconds.
 - `--timeLimit=N` — Exit after approximately N minutes (the last prompt in progress will finish).
 - `--uuid=UUID` — Process only the prompt with the specified UUID and exit. Bypasses the lock check.
+- `--debug` — Enable debug logging for AI generation. Use this to see detailed information about prompt processing, backend calls, and results.
 
 ## Examples
 
