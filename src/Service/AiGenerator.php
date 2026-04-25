@@ -166,24 +166,27 @@ class AiGenerator implements ListenerInterface
         $timer = microtime(true);
 
         $response = '';
+        $stepTotal = count($promptList);
         foreach (array_values($promptList) as $ord => $step) {
+            $stepNum = $ord + 1;
             $stepOptions = array_merge($options, $step['options'] ?? []);
             $stepPrompt = str_replace("{{input}}", $response, $step['prompt']);
+            $prefix = "👣 Pipeline[{$step['type']} #$stepNum/$stepTotal]";
 
             switch ($step['type'] ?? 'step') {
                 case 'qc':
                     $answer = $this->runQcCheck($ai, $stepPrompt, $response, $stepOptions);
                     if ($answer['compliant']) {
-                        $api->log->info('ai', "Pipeline[#$ord/{$step['type']}]: QC check passed for request UUID \"{$event->uuid}\" (#{$id}).");
+                        $api->log->info('ai', "$prefix: QC check passed for request UUID \"{$event->uuid}\" (#{$id}).");
                     } else {
-                        $api->log->info('ai', "Pipeline[#$ord/{$step['type']}]: QC check failed for request UUID \"{$event->uuid}\" (#{$id}). Explanation: {$answer['explanation']}, Test: " . substr(json_encode($stepPrompt), 0, 100) . "...");
-                        throw new QcException("Pipeline[#$ord/{$step['type']}]: QC check failed: {$answer['explanation']}");
+                        $api->log->info('ai', "$prefix: QC check failed for request UUID \"{$event->uuid}\" (#{$id}). Explanation: {$answer['explanation']}, Test: " . substr(json_encode($stepPrompt), 0, 100) . "...");
+                        throw new QcException("$prefix: QC check failed: {$answer['explanation']}");
                     }
                     break;
                 case 'step':
                 default:
                     $response = $api->ai->prompt($ai, $stepPrompt, $format, $stepOptions, debug: $this->debug);
-                    $api->log->info('ai', "Pipeline[#$ord/{$step['type']}]: Step completed for request UUID \"{$event->uuid}\" (#{$id}). Response: " . substr(json_encode($response), 0, 100) . "...");
+                    $api->log->info('ai', "$prefix: Step completed for request UUID \"{$event->uuid}\" (#{$id}). Response: " . substr(json_encode($response), 0, 100) . "...");
             }
         }
 
