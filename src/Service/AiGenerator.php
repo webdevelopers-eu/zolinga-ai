@@ -158,6 +158,7 @@ class AiGenerator implements ListenerInterface
         $format = $event->request['format'] ?: null;
         $options = $event->request['options'] ?: [];
         $api->log->info('ai', "💬 Processing request UUID \"{$event->uuid}\" (id#{$id}) with AI '{$ai}'");
+        $timer = microtime(true);
 
         $response = '';
         foreach (array_values($promptList) as $ord => $step) {
@@ -183,6 +184,10 @@ class AiGenerator implements ListenerInterface
 
         $api->db->query("UPDATE aiEvents SET response = ? WHERE id = ?", json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), $id);
         $event->response['data'] = $response;
+
+        $elapsed = microtime(true) - $timer;
+        $time = gmdate("i\m s\s", (int) $elapsed);
+        $api->log->info('ai', "⏱️ Finished processing request UUID \"{$event->uuid}\" (id#{$id}) in {$time}");
     }
 
     private function runQcCheck(string $ai, string $prompt, string $input, array $options = []): array
