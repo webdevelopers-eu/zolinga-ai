@@ -181,7 +181,7 @@ private function processPrompt(AiBackend $ai, string $prompt, ?array $format = n
         throw new \Exception("Failed to acquire concurrency lock for $ai.", 1241);
     }
     try {
-        $data = $this->httpRequest($url, $request, $ai->model);
+        $data = $this->httpRequest($url, $request, $ai->model, $debug);
     } finally {
         $ai->releaseLock();
     }
@@ -291,7 +291,7 @@ public function convertMarkdownToDOM(string $markdown): DOMDocument
     return $doc;
 }
 
-private function httpRequest(string $url, array $request, string $model): array
+private function httpRequest(string $url, array $request, string $model, bool $debug = false): array
 {
     global $api;
     
@@ -360,16 +360,16 @@ private function httpRequest(string $url, array $request, string $model): array
     }
             
     $api->log->info('ai', "Model $model responded: " . implode(", ", $stat));
-    $this->log($data, "Response from $urlSafe (".number_format(strlen($response))." bytes)");
+    $this->log($data, "Response from $urlSafe (".number_format(strlen($response))." bytes)", $debug);
     
     return $data;
 }
 
-private function log(string|array $message, string $extraMessage): void
+private function log(string|array $message, string $extraMessage, bool $debug = false): void
 {
     global $api;
     
-    if (!$api->config['ai']['log']) return;
+    if (!$debug && !$api->config['ai']['log']) return;
     
     
     $print = '';
