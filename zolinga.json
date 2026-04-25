@@ -71,7 +71,7 @@
 
   "config": {
     "ai": {
-      "log": true,
+      "log": false,
       "systemPrompt": "You are an exceptionally talented copywriter.",
       "backends": {
         "default": {
