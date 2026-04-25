@@ -118,6 +118,33 @@ Instead of a single prompt, `<ai-text>` can contain `<step>` and `<qc>` child el
 
 Steps and QC checks are processed in document order. Tags can be nested at any depth — only their text content matters. See the [reference](:ref:event:cms:content:ai-text) for full details.
 
+## Tip: CMS Elements Inside Prompts
+
+You can place CMS content elements directly inside `<ai-text>`, including inside `<step>` blocks. They are expanded first, and their resulting text becomes part of the prompt.
+
+This is useful for:
+
+- injecting dynamic metadata from other content tags
+- conditionally including one of several prompt lines
+- shuffling inline prompt fragments with `<random-chooser>`
+
+Example:
+
+```html
+<ai-text ai="default" uuid="demo:prompt-variation">
+  <step>
+    Write a long-form article about ACME.
+    <random-chooser count="1">
+      <span>Make the title slightly confrontational.</span>
+      <span>Keep the title direct and matter-of-fact.</span>
+      <span></span>
+    </random-chooser>
+  </step>
+</ai-text>
+```
+
+For more detail and processing order, see the [<ai-text> reference](:ref:event:cms:content:ai-text).
+
 ## Output Structure
 
 The generated content will be wrapped in an `<article>` element (or the element specified by the `element` attribute), with:

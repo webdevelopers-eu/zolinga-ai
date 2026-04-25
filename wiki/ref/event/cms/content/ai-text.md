@@ -75,6 +75,47 @@ This allows you to dynamically construct prompts using other content elements:
 </ai-text>
 ```
 
+Tip: this also works inside `<step>` blocks in a multi-step pipeline. A useful pattern is to place a content tag directly into a bullet list or instruction block so it conditionally injects extra prompt text.
+
+Example using `<random-chooser>` to optionally include one instruction line:
+
+```html
+<ai-text ai="vyhledavani" uuid="vyhledavani:{{GET:search|Your Brand}}">
+    <step>
+        STRUCTURE:
+        - # heading containing "{{GET:search|Your Brand}}".
+        - The title must be at least 60 characters long.
+        <random-chooser count="1">
+            <span>- Provocative questions implying fear and concern are encouraged in the title. Not required though.</span>
+            <span>- Avoid provocative questions, keep the title neutral and informative.</span>
+        </random-chooser>
+    </step>
+</ai-text>
+```
+
+Example using `<random-chooser>` to shuffle plain text values and join them with a separator:
+
+```html
+<ai-text ai="default" uuid="demo:random-chooser-seed">
+    <step>
+        Prefer title words inspired by these numbers:
+        <random-chooser count="3" text-separator=", " selector="./*/text()">
+            <div>111</div>
+            <div>222</div>
+            <div>333</div>
+            <div>444</div>
+            <div>555</div>
+        </random-chooser>
+    </step>
+</ai-text>
+```
+
+Practical notes:
+
+- Nested content tags are expanded before prompt variables such as `{{random|n}}` are evaluated.
+- Only the expanded text content becomes part of the prompt, so wrapper tags like `<span>` or `<div>` are not preserved as HTML instructions.
+- This makes content tags useful for optional prompt lines, shuffled constraints, injected metadata, or dynamic snippets assembled from other CMS elements.
+
 The expansion order is:
 1. Nested elements inside `<ai-text>` are expanded first by the CMS parser.
 2. Scripts are stripped from the expanded content.
