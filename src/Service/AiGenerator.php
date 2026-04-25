@@ -192,7 +192,7 @@ class AiGenerator implements ListenerInterface
 
         $elapsed = microtime(true) - $timer;
         $time = gmdate("i\m s\s", (int) $elapsed);
-        $api->log->info('ai', "⏱️ Finished processing request UUID \"{$event->uuid}\" (id#{$id}) in {$time}");
+        $api->log->info('ai', "🏁 Finished processing request UUID \"{$event->uuid}\" (id#{$id}) in {$time}");
     }
 
     private function runQcCheck(string $ai, string $prompt, string $input, array $options = []): array
