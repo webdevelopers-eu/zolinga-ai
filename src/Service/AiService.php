@@ -147,7 +147,7 @@ public function prompt(AiBackend|string $ai, string $prompt, ?array $format = nu
         try {
             return $this->processPrompt($ai, $prompt, $format, $options, $debug);
         } catch (\Exception $e) {
-            $api->logger->error("ai", "Error processing prompt ($retry attempts left): " . $e->getMessage() . "trace, " . $e->getTraceAsString());
+            $api->log->error("ai", "Error processing prompt ($retry attempts left): " . $e->getMessage() . "trace, " . $e->getTraceAsString());
         }
     }
     throw new \Exception("Failed to process the prompt after multiple attempts.", 1228);
