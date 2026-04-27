@@ -1,13 +1,13 @@
 ## Syntax
 
 ```html
-<ai-text [ai="{AI_BACKEND}"] [uuid="{UUID}"] [element="{ELEMENT_TYPE}"] [allow-generate-from="{IP_LIST}"] [remove-invalid-links="true"] [tag="{TAG}"] [other_attributes...]>{PROMPT}</ai-text>
+<ai-text [ai="{AI_BACKEND}"] uuid="{UUID}" [element="{ELEMENT_TYPE}"] [allow-generate-from="{IP_LIST}"] [remove-invalid-links="true"] [tag="{TAG}"] [other_attributes...]}>{PROMPT}</ai-text>
 ```
 
 Example:
 
 ```html
-<ai-text ai="default" remove-invalid-links="true">
+<ai-text ai="default" uuid="example:zolinga-platform" remove-invalid-links="true">
     Write a blog post about the Zolinga platform.
 </ai-text>
 ```
@@ -40,7 +40,7 @@ Example with separator:
 Restricted generation (only your office IP and localhost can trigger generation):
 
 ```html
-<ai-text ai="default" allow-generate-from="203.0.113.10,10.0.0.0/8">
+<ai-text ai="default" uuid="example:widget-desc" allow-generate-from="203.0.113.10,10.0.0.0/8">
     Write a product description for our new widget.
 </ai-text>
 ```
@@ -48,7 +48,7 @@ Restricted generation (only your office IP and localhost can trigger generation)
 ## Attributes
 
 - `ai`: The backend to use for generating the article. The backends are defined in your [configuration](:Zolinga Core:Configuration)'s key. Default: `default`.
-- `uuid`: The UUID of the article. If the UUID is not provided, the system will generate a new UUID hash for the article from the prompt, model, and backend. AI generated content is stored in the database under the UUID. Therefore, if you want to display the same article multiple times, you should provide the same UUID.
+- `uuid`: **(required)** The UUID of the article. If omitted, an error is thrown and the article will not be generated or rendered. AI generated content is stored in the database under the UUID. Therefore, if you want to display the same article multiple times, you should provide the same UUID.
 - `element`: The HTML element type to use for the generated content. Default: `article`.
 - `allow-generate-from`: A comma-separated list of IP addresses or CIDR ranges that are allowed to **trigger** AI content generation. Requests from IPs not on the list will receive a 404 response instead of queuing a generation job. Already-generated content is served to everyone regardless of this attribute. If the attribute is omitted, any visitor can trigger generation. Uses `$api->network->matchCidr()` for matching, so both IPv4 and IPv6 are supported. Example: `"109.164.101.75,10.0.0.0/8,2001:db8::/32"`.
 - `remove-invalid-links`: If set to `true`, invalid links found in the generated article will be removed before the article is saved. Use this when you want link cleanup during article generation.
@@ -69,7 +69,7 @@ The `<ai-text>` element can contain nested CMS content elements. Before the prom
 This allows you to dynamically construct prompts using other content elements:
 
 ```html
-<ai-text ai="default">
+<ai-text ai="default" uuid="example:summary">
     Write a summary for this post: <autoblog-post data-field="title" />
     Context: <my-data-element />
 </ai-text>
@@ -164,12 +164,10 @@ Example with separator:
 </ai-text>
 ```
 
-Notes:
+**Important:**
 
+- The `uuid` attribute is **mandatory**. If omitted, an error is thrown and the article will not be generated or rendered.
 - Each `{{random|n}}`, `{{random|n|charset}}`, or `{{random|n|charset|separator}}` occurrence is expanded independently.
-- Expansion happens before the fallback auto-generated UUID is calculated.
-- If you use `{{random|n}}`, `{{random|n|charset}}`, or `{{random|n|charset|separator}}` without an explicit `uuid`, the prompt fingerprint changes on each request, which can create a different generated article UUID each time.
-- For stable caching with controlled prompt variation, pair `{{random|n}}`, `{{random|n|charset}}`, or `{{random|n|charset|separator}}` with an explicit `uuid`.
 
 ## Multi-Step Pipeline
 
@@ -196,7 +194,7 @@ The `<ai-text>` element supports a multi-step pipeline using `<step>` and `<qc>`
 ### Example
 
 ```html
-<ai-text ai="default" remove-invalid-links="true">
+<ai-text ai="default" uuid="blog:trademark-monitoring-eu" remove-invalid-links="true">
     <step>
         Write a 500-word blog post about trademark monitoring in the EU.
     </step>

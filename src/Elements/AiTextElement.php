@@ -26,7 +26,7 @@ use Zolinga\System\Types\StatusEnum;
 *
 * Attributes:
 * - ai: Optional. The AI backend to use. Default is "default".
-* - uuid: Optional. The unique identifier of the article. If not provided, hash of the prompt will be used.
+* - uuid: Required. The unique identifier of the article. An exception is thrown if omitted.
 * - remove-invalid-links: Optional. If set to "true", invalid links in the generated article will be removed.
 * - allow-generate-from: Optional. Comma-separated IP/CIDR list that may trigger generation.
 *
@@ -48,17 +48,52 @@ class AiTextElement implements ListenerInterface
     {
         global $api;
         
-        $uuid = $event->input->getAttribute("uuid") ?: null;
-        if ($uuid) { // generated, quick render if article is already available
-            $article = AiTextModel::getTextModel($uuid);
-            if ($article) {
-                $this->renderArticle($event->input, $event->output, $article);
-                $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
-                return;
-            }
+        $ai = $event->input->getAttribute("ai") ?: "default";
+        $allowedIps = $event->input->getAttribute("allow-generate-from") ?: null;
+        $printOnly = $event->input->hasAttribute('print-only');
+        $uuid = $event->input->getAttribute("uuid") 
+            or throw new Exception("AiTextElement requires a 'uuid' attribute.");
+
+        $article = AiTextModel::getTextModel($uuid);
+        if (!$printOnly && $article) { // article already exists, render it
+            $this->renderArticle($event->input, $event->output, $article);
+            $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
+            return;
         }
+
+        $canGenerate = !$allowedIps || $api->network->matchCidr($_SERVER['REMOTE_ADDR'], explode(',', $allowedIps));
+        $forceGenerate = isset($_GET['regenerate']);
         
+        if (!$canGenerate) {
+            $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not found.")." (Your IP is {$_SERVER['REMOTE_ADDR']})");
+            $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found and generation not allowed.");
+            http_response_code(StatusEnum::GONE->value);
+            return;
+        }
+
+        // This step can be expensive, do it after all the checks to avoid unnecessary processing
         $api->cmsParser->parse($event->input, true);
+
+        $list = $this->extractSteps($event);
+
+        if ($printOnly) {
+            $this->printOnlyAndRespond($event, $list);
+        } else {            
+            $this->generateArticleAndRespond($event, $uuid, $ai, $list, $forceGenerate);
+        }
+    }
+
+    private function printOnlyAndRespond(ContentElementEvent $event, array $list): void
+    {
+        $this->print($event->output, implode("\n\n", array_map(
+            fn($item) => "==={$item['type']}===\n{$item['prompt']}", $list
+        )));
+        $event->setStatus(ContentElementEvent::STATUS_OK, "Print-only article rendered.");
+    }
+
+
+    private function extractSteps(ContentElementEvent $event): array
+    {
         $list = iterator_to_array($event->inputXPath->query(".//step|.//qc", $event->input));
 
         if (!count($list)) { // no subelements supported
@@ -70,22 +105,8 @@ class AiTextElement implements ListenerInterface
             "type" => $step->localName
         ], $list);
 
-        $ai = $event->input->getAttribute("ai") ?: "default";
-        if (!$uuid) {
-            $uuid = $this->generateUuid($ai, json_encode($list, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-        }
-
-        if ($event->input->hasAttribute('print-only')) {
-            $this->print($event->output, implode("\n\n", array_map(
-                fn($item) => "==={$item['type']}===\n{$item['prompt']}", $list
-            )));
-            $event->setStatus(ContentElementEvent::STATUS_OK, "Print-only article $uuid rendered.");
-            return;
-        }
-            
-        $event->output->nodeValue = "";
-        $this->handleArticleResponse($event, $uuid, $ai, $list);
-    }
+        return $list;
+    }        
 
     /**
      * Extract text prompt from the input element, stripping scripts.
@@ -123,47 +144,22 @@ class AiTextElement implements ListenerInterface
     }
 
     /**
-     * Resolve UUID from explicit attribute or generate from prompt fingerprint.
-     */
-    private function generateUuid(string $ai, string $prompt): string
-    {
-        $fingerprint = "$ai:$prompt";
-        $fingerprint = preg_replace('/\s+/', ' ', trim($fingerprint));
-        return 'ai:article:' . substr(sha1($fingerprint), 0, 12);
-    }
-
-    /**
      * Render existing article or queue generation, responding with appropriate HTTP status.
      */
-    private function handleArticleResponse(ContentElementEvent $event, string $uuid, string $ai, array $list): void
+    private function generateArticleAndRespond(ContentElementEvent $event, string $uuid, string $ai, array $list, bool $forceGenerate): void
     {
         global $api;
 
-        $article = AiTextModel::getTextModel($uuid);
-        $allowedIps = $event->input->getAttribute("allow-generate-from") ?: null;
-        $allowed = !$allowedIps || $api->network->matchCidr($_SERVER['REMOTE_ADDR'], explode(',', $allowedIps));
-        $regenerate = isset($_GET['regenerate']);
-
-        if ($regenerate && $allowed) {
-            $api->db->query('DELETE FROM aiTexts WHERE id = ? LIMIT 1', $article?->id); // allow regeneration by deleting old article    
-            $article = null; // force regeneration below
+        if ($forceGenerate) {
+            $api->db->query('DELETE FROM aiTexts WHERE uuid = ? LIMIT 1', $uuid); // allow regeneration by deleting old article    
         }
 
-        if ($article) {
-            $this->renderArticle($event->input, $event->output, $article);             
-            $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
-        } elseif ($allowed) {
-            $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The server is busy. Please try again later."));
-            $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
-            $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks, $event->input->getAttribute("tag") ?: null);
-            $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not available at this time.");
-            header("Retry-After: 86400");
-            http_response_code(StatusEnum::SERVICE_UNAVAILABLE->value);                
-        } else {
-            $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not found.")." (Your IP is {$_SERVER['REMOTE_ADDR']})");
-            $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found and generation not allowed.");
-            http_response_code(StatusEnum::GONE->value);
-        }
+        $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The server is busy. Please try again later."));
+        $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
+        $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks, $event->input->getAttribute("tag") ?: null);
+        $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not available at this time.");
+        header("Retry-After: 86400");
+        http_response_code(StatusEnum::SERVICE_UNAVAILABLE->value);                
     }
 
     private function print(\DOMDocumentFragment $frag, string $text): void
