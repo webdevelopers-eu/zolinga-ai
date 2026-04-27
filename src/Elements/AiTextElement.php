@@ -49,6 +49,15 @@ class AiTextElement implements ListenerInterface
         global $api;
         
         $api->cmsParser->parse($event->input, true);
+        $uuid = $event->input->getAttribute("uuid") ?: null;
+        if ($uuid) { // generated, quick render if article is already available
+            $article = AiTextModel::getTextModel($uuid);
+            if ($article) {
+                $this->renderArticle($event->input, $event->output, $article);
+                $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
+                return;
+            }
+        }
 
         $list = iterator_to_array($event->inputXPath->query(".//step|.//qc", $event->input));
 
@@ -62,8 +71,9 @@ class AiTextElement implements ListenerInterface
         ], $list);
 
         $ai = $event->input->getAttribute("ai") ?: "default";
-        $uuid = $this->resolveUuid($event->input, $ai, 
-            json_encode($list, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        if (!$uuid) {
+            $uuid = $this->generateUuid($ai, json_encode($list, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        }
 
         if ($event->input->hasAttribute('print-only')) {
             $this->print($event->output, implode("\n\n", array_map(
@@ -115,12 +125,8 @@ class AiTextElement implements ListenerInterface
     /**
      * Resolve UUID from explicit attribute or generate from prompt fingerprint.
      */
-    private function resolveUuid(\DOMElement $input, string $ai, string $prompt): string
+    private function generateUuid(string $ai, string $prompt): string
     {
-        if ($input->getAttribute("uuid")) {
-            return $input->getAttribute("uuid");
-        }
-
         $fingerprint = "$ai:$prompt";
         $fingerprint = preg_replace('/\s+/', ' ', trim($fingerprint));
         return 'ai:article:' . substr(sha1($fingerprint), 0, 12);
