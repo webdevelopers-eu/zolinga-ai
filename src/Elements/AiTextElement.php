@@ -154,10 +154,10 @@ class AiTextElement implements ListenerInterface
             $api->db->query('DELETE FROM aiTexts WHERE uuid = ? LIMIT 1', $uuid); // allow regeneration by deleting old article    
         }
 
-        $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The server is busy. Please try again later."));
+        $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not published yet. Try again later.")." (UUID: $uuid)");
         $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
         $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks, $event->input->getAttribute("tag") ?: null);
-        $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not available at this time.");
+        $event->setStatus(ContentElementEvent::STATUS_OK, "The article was not published yet. Try again later.");
         header("Retry-After: 86400");
         http_response_code(StatusEnum::SERVICE_UNAVAILABLE->value);                
     }
