@@ -318,7 +318,7 @@ private function httpRequest(string $url, array $request, string $model, bool $d
             "Accept: application/json\r\n" .
             "Accept-Charset: utf-8\r\n",
             'content' => $raw,
-            'timeout' => 28800, // 28800s = 8 hours
+            'timeout' => 60 * 15, // seconds
         ],
     ]));
     ini_set('default_socket_timeout', $prevSocketTimeout);
