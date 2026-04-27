@@ -48,7 +48,6 @@ class AiTextElement implements ListenerInterface
     {
         global $api;
         
-        $api->cmsParser->parse($event->input, true);
         $uuid = $event->input->getAttribute("uuid") ?: null;
         if ($uuid) { // generated, quick render if article is already available
             $article = AiTextModel::getTextModel($uuid);
@@ -58,7 +57,8 @@ class AiTextElement implements ListenerInterface
                 return;
             }
         }
-
+        
+        $api->cmsParser->parse($event->input, true);
         $list = iterator_to_array($event->inputXPath->query(".//step|.//qc", $event->input));
 
         if (!count($list)) { // no subelements supported
