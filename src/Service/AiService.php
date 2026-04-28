@@ -88,7 +88,7 @@ class AiService implements ServiceInterface
         $event->uuid,
         $event->uuid,
         json_encode($event),
-        $priority
+        min(max($priority, 0.000001), 0.999999) // ensure priority is between 0 and 1 exclusive
     );
     
     if (!$lastInsertId) {
