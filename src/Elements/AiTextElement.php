@@ -246,7 +246,7 @@ class AiTextElement implements ListenerInterface
         $wrapper->setAttribute("data-placeholder", "true");
 
         foreach ($placeholder->childNodes as $child) {
-            $wrapper->appendChild($frag->ownerDocument->importNode($child, true));
+            $wrapper->appendChild($frag->ownerDocument->importNode($child->cloneNode(true), true));
         }
 
         $frag->appendChild($wrapper);
