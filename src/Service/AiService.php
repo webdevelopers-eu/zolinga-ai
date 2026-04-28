@@ -82,11 +82,13 @@ class AiService implements ServiceInterface
             return $event->uuid;
         }
         
-        $lastInsertId = $api->db->query("INSERT INTO aiEvents (created, uuid, uuidHash, aiEvent) VALUES (?, ?, UNHEX(SHA1(?)), ?)",
+        $priority = $event->request['priority'] ?? 0.5;
+        $lastInsertId = $api->db->query("INSERT INTO aiEvents (created, uuid, uuidHash, aiEvent, priority) VALUES (?, ?, UNHEX(SHA1(?)), ?, ?)",
         time(),
         $event->uuid,
         $event->uuid,
-        json_encode($event)
+        json_encode($event),
+        $priority
     );
     
     if (!$lastInsertId) {

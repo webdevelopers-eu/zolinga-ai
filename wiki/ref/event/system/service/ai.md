@@ -79,6 +79,7 @@ bin/zolinga ai:generate
 - `format`: JSON schema array for structured output, or `null` for plain text.
 - `options`: Optional backend options applied to every prompt in the request before any step-level overrides are applied.
 - `removeInvalidLinks`: Optional flag used by article generation handlers.
+- `priority`: Float between 0 and 1 (exclusive). Higher values are processed first. Default: `0.5`.
 
 ### Pipeline Step Format
 

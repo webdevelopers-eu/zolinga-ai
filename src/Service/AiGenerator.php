@@ -91,7 +91,7 @@ class AiGenerator implements ListenerInterface
         global $api;
         do {
             $id = $api->db->query(
-                "SELECT id FROM aiEvents WHERE status = ? ORDER BY created DESC, id DESC LIMIT 1",
+                "SELECT id FROM aiEvents WHERE status = ? ORDER BY priority DESC, created DESC LIMIT 1",
                 PromptStatusEnum::QUEUED
             )['id'];
 

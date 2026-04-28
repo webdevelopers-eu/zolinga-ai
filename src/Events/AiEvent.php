@@ -20,6 +20,7 @@ use Zolinga\System\Types\OriginEnum;
  *    Each step: ['prompt' => string, 'type' => 'step'|'qc']. See <ai-text> pipeline docs.
  * - 'format' (array|null): JSON Schema for structured output, or null for plain text. Default: null.
  * - 'removeInvalidLinks' (bool): Strip invalid links from generated HTML. Default: false.
+ * - 'priority' (float): Processing priority between 0 and 1 (exclusive). Higher = processed first. Default: 0.5.
  * - Any custom keys you add to request[] are preserved through serialization.
  *
  * Response keys (set after processing):
@@ -47,6 +48,7 @@ class AiEvent extends RequestResponseEvent {
         'prompt' => [],
         'format' => null,
         'removeInvalidLinks' => false,
+        'priority' => 0.5,
     ];
 
     private const REQUEST_REQUIRED = [
@@ -84,6 +86,11 @@ class AiEvent extends RequestResponseEvent {
 
         if ($request['format'] !== null && $request['format'] !== 'json' && !is_array($request['format'])) {
             throw new \Exception("Invalid format '{$request['format']}' in AiEvent request. See Oolama API documentation.");
+        }
+
+        $priority = $request['priority'] ?? 0.5;
+        if (!is_numeric($priority) || $priority <= 0 || $priority >= 1) {
+            throw new \Exception("Priority must be a float between 0 and 1 (exclusive), got '{$priority}'.");
         }
 
         if (!is_array($api->config['ai']['backends'][$request['ai']])) {

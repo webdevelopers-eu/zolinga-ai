@@ -62,6 +62,7 @@ Use `$api->ai->promptAsync()` to queue a request for background processing. The 
 | `format` | array or null | no | `null` | JSON Schema for structured output, or `null` for plain text |
 | `options` | array | no | `[]` | Default backend options applied to every step and QC check in the request before any step-level overrides |
 | `removeInvalidLinks` | bool | no | `false` | Strip invalid links from generated HTML |
+| `priority` | float | no | `0.5` | Processing priority between 0 and 1 (exclusive). Higher values are processed first |
 
 Pipeline step format (when `prompt` is an array):
 

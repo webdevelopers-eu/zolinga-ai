@@ -1,3 +1,19 @@
+CREATE TABLE `aiEvents` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `created` int(10) unsigned NOT NULL,
+  `uuid` varchar(128) DEFAULT NULL,
+  `uuidHash` binary(20) NOT NULL,
+  `aiEvent` mediumtext NOT NULL,
+  `priority` float NOT NULL DEFAULT 0.5,
+  `status` varchar(12) NOT NULL DEFAULT 'queued',
+  `start` int(10) unsigned DEFAULT NULL,
+  `end` int(10) unsigned DEFAULT NULL,
+  `response` text DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uuidHash_UNIQUE` (`uuidHash`),
+  KEY `idx_status_priority` (`status`, `priority` DESC, `id` DESC)
+) ENGINE=InnoDB AUTO_INCREMENT=919 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE `aiTexts` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `uuid` varchar(128) NOT NULL,
@@ -11,19 +27,4 @@ CREATE TABLE `aiTexts` (
   UNIQUE KEY `id_UNIQUE` (`id`),
   UNIQUE KEY `uuid_UNIQUE` (`uuid`),
   UNIQUE KEY `uuidHash_UNIQUE` (`uuidHash`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-
-CREATE TABLE `aiEvents` (
-  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `created` int(10) unsigned NOT NULL,
-  `uuid` varchar(128) DEFAULT NULL,
-  `uuidHash` binary(20) NOT NULL,
-  `aiEvent` mediumtext NOT NULL,
-  `status` varchar(12) NOT NULL DEFAULT 'queued',
-  `start` int(10) unsigned DEFAULT NULL,
-  `end` int(10) unsigned DEFAULT NULL,
-  `response` text DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uuidHash_UNIQUE` (`uuidHash`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5864 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
