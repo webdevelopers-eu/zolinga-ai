@@ -181,15 +181,36 @@ The `<ai-text>` element supports a multi-step pipeline using `<step>` and `<qc>`
 
 `<qc>` defines a quality control check. The text content of `<qc>` lists the criteria that the current output must satisfy. If the QC check fails, the entire pipeline is restarted from the beginning (up to 3 retries).
 
+### Placeholder Element
+
+`<placeholder>` defines custom content to display while the article is being generated (HTTP 503 state). If present, its contents are rendered instead of the default "server is busy" message. This is useful when you want to show a loading spinner, skeleton UI, or friendly message to visitors while the AI works in the background.
+
+The placeholder content is wrapped in an `<article class="zolinga-text placeholder" data-placeholder="true">` element. Any nested CMS content tags inside `<placeholder>` are expanded before rendering.
+
+Example:
+
+```html
+<ai-text ai="default" uuid="blog:trademark-monitoring-eu" remove-invalid-links="true">
+    <placeholder>
+        <p>We are preparing a comprehensive article on trademark monitoring in the EU.</p>
+        <div class="skeleton-loader"></div>
+    </placeholder>
+    <step>
+        Write a 500-word blog post about trademark monitoring in the EU.
+    </step>
+</ai-text>
+```
+
 ### Processing Rules
 
-- `<step>` and `<qc>` can appear in any order and at any nesting depth (only their text content matters, surrounding tags are ignored).
+- `<step>`, `<qc>`, and `<placeholder>` can appear in any order and at any nesting depth (only their text content matters, surrounding tags are ignored).
 - Steps and QC checks are processed in document order.
 - The first `<step>` generates initial content from its prompt.
 - Subsequent `<step>` elements receive the previous output via `{{input}}`.
 - A `<qc>` element validates the current output against its criteria.
 - If any `<qc>` check fails, the whole pipeline restarts (max 3 retries total). If all retries fail, the generation fails.
 - If no `<step>` or `<qc>` elements are found, `<ai-text>` falls back to the simple single-prompt mode.
+- `<placeholder>` is only rendered when the article does not yet exist and generation is queued. It is ignored when the article is already generated or when `print-only` is set.
 
 ### Example
 

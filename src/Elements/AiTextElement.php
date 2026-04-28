@@ -75,11 +75,12 @@ class AiTextElement implements ListenerInterface
         $api->cmsParser->parse($event->input, true);
 
         $list = $this->extractSteps($event);
+        $placeholder = $this->extractPlaceholder($event);
 
         if ($printOnly) {
             $this->printOnlyAndRespond($event, $list);
-        } else {            
-            $this->generateArticleAndRespond($event, $uuid, $ai, $list, $forceGenerate);
+        } else {
+            $this->generateArticleAndRespond($event, $uuid, $ai, $list, $forceGenerate, $placeholder);
         }
     }
 
@@ -146,7 +147,7 @@ class AiTextElement implements ListenerInterface
     /**
      * Render existing article or queue generation, responding with appropriate HTTP status.
      */
-    private function generateArticleAndRespond(ContentElementEvent $event, string $uuid, string $ai, array $list, bool $forceGenerate): void
+    private function generateArticleAndRespond(ContentElementEvent $event, string $uuid, string $ai, array $list, bool $forceGenerate, ?\DOMElement $placeholder): void
     {
         global $api;
 
@@ -154,7 +155,11 @@ class AiTextElement implements ListenerInterface
             $api->db->query('DELETE FROM aiTexts WHERE uuid = ? LIMIT 1', $uuid); // allow regeneration by deleting old article    
         }
 
-        $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not published yet. Try again later.")." (UUID: $uuid)");
+        if ($placeholder) {
+            $this->renderPlaceholder($event->output, $placeholder);
+        } else {
+            $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not published yet. Try again later.")." (UUID: $uuid)");
+        }
         $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
         $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks, $event->input->getAttribute("tag") ?: null);
         $event->setStatus(ContentElementEvent::STATUS_OK, "The article was not published yet. Try again later.");
@@ -215,6 +220,38 @@ class AiTextElement implements ListenerInterface
         $errorMsgElement->appendChild(new \DOMText(dgettext("zolinga-ai", $message)));
     }
     
+    /**
+     * Extract the optional <placeholder> subelement from <ai-text>.
+     *
+     * @param ContentElementEvent $event
+     * @return \DOMElement|null
+     */
+    private function extractPlaceholder(ContentElementEvent $event): ?\DOMElement
+    {
+        $nodeList = $event->inputXPath->query(".//placeholder", $event->input);
+        return $nodeList->item(0) ?: null;
+    }
+
+    /**
+     * Render the placeholder content into the output fragment.
+     *
+     * @param \DOMDocumentFragment $frag
+     * @param \DOMElement $placeholder
+     * @return void
+     */
+    private function renderPlaceholder(\DOMDocumentFragment $frag, \DOMElement $placeholder): void
+    {
+        $wrapper = $frag->ownerDocument->createElement("article");
+        $wrapper->setAttribute("class", "zolinga-text placeholder");
+        $wrapper->setAttribute("data-placeholder", "true");
+
+        foreach ($placeholder->childNodes as $child) {
+            $wrapper->appendChild($frag->ownerDocument->importNode($child, true));
+        }
+
+        $frag->appendChild($wrapper);
+    }
+
     /**
     * Query the AI model to generate the article.
     * 

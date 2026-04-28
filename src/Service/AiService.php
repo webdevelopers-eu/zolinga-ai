@@ -288,6 +288,7 @@ public function convertMarkdownToDOM(string $markdown): DOMDocument
                 <article>" . $contents . "</article>
             </body>
             </html>",  LIBXML_NOERROR | LIBXML_NONET | LIBXML_NOWARNING);
+
     return $doc;
 }
 
