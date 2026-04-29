@@ -132,7 +132,7 @@ class AiGenerator implements ListenerInterface
             } catch (\Throwable $e) {
                 $api->log->error('ai', "Error processing request {$id}: {$e->getMessage()}, trace {$e->getTraceAsString()}");
                 $api->db->query(
-                    "UPDATE aiEvents SET status = ?, end = ? WHERE id = ?",
+                    "UPDATE aiEvents SET status = ?, end = ?, priority = priority * 0.8 WHERE id = ?",
                     PromptStatusEnum::ERROR,
                     time(),
                     $id
