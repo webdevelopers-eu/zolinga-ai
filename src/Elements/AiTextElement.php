@@ -173,7 +173,7 @@ class AiTextElement implements ListenerInterface
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not published yet. Try again later.")." (UUID: $uuid)");
         }
         $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
-        $generateMetaAI = !empty($event->input->getAttribute('show-meta')) ? $event->input->getAttribute('ai-meta') ?: 'default' : null;
+        $generateMetaAI = !empty($event->input->getAttribute('show-meta')) ? ($event->input->getAttribute('ai-meta') ?: 'default') : null;
         $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks, $event->input->getAttribute("tag") ?: null, $generateMetaAI);
         $event->setStatus(ContentElementEvent::STATUS_OK, "The article was not published yet. Try again later.");
         header("Retry-After: 86400");
@@ -331,7 +331,7 @@ class AiTextElement implements ListenerInterface
     * @param string|null $tag An optional tag to associate with the article. Can be used for categorization or later retrieval. Will be stored in DB column 'tag'.
     * @return void
     */
-    private function generateArticle(string $uuid, string $ai, array $list, bool $removeInvalidLinks = false, ?string $tag = null, ?bool $generateMetaAI = null): void
+    private function generateArticle(string $uuid, string $ai, array $list, bool $removeInvalidLinks = false, ?string $tag = null, ?string $generateMetaAI = null): void
     {
         global $api;
         
