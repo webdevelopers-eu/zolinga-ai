@@ -343,7 +343,6 @@ class AiTextElement implements ListenerInterface
             'uuid' => $uuid,
             'ai' => $ai,
             'tag' => $tag,
-            'prompt' => $list,
             // Make the articles maximally variable so they are not
             // treated as duplicates by search engines.
             'options' => [
@@ -353,9 +352,10 @@ class AiTextElement implements ListenerInterface
             ],
             'triggerURL' => $api->url->getCurrentUrl(),
             'removeInvalidLinks' => $removeInvalidLinks,
-            'generateMetaAI' => $generateMetaAI
+            'generateMetaAI' => $generateMetaAI,
+            'prompt' => $list
         ]);
-        $event->uuid = "ai:text:$uuid"; // override event UUID to match article UUID for easier tracking and deduplication
+        $event->uuid = $uuid; // override event UUID to match article UUID for easier tracking and deduplication
         
         $api->ai->promptAsync($event);
     }
@@ -371,7 +371,6 @@ class AiTextElement implements ListenerInterface
         $event = new AiEvent("ai:meta:generated", OriginEnum::INTERNAL, [
             'uuid' => $article->uuid,
             'ai' => $ai, // some models may not support json format 
-            'prompt' => $prompt,
             'priority' => 0.55, // slightly higher to add meta to already generated articles faster
             'options' => [
                 'temperature' => 0.9,
@@ -393,9 +392,10 @@ class AiTextElement implements ListenerInterface
                     ],
                 ],
                 'additionalProperties' => false,
-            ]
+            ],
+            'prompt' => $prompt,
         ]);
-        $event->uuid = "ai:meta:$article->uuid"; // override event UUID to match article UUID for easier tracking and deduplication
+        $event->uuid = $article->uuid; // override event UUID to match article UUID for easier tracking and deduplication
 
         $api->ai->promptAsync($event);
     }
@@ -414,7 +414,7 @@ class AiTextElement implements ListenerInterface
     {
         global $api;
 
-        $uuid = $event->response['uuid'] ?? $event->uuid;
+        $uuid = $event->uuid;
         $contents = $event->response['data'];
         $tag = $event->request['tag'] ?? null;
         $triggerURL = $event->request['triggerURL'] ?? null;
