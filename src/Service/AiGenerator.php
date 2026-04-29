@@ -90,6 +90,14 @@ class AiGenerator implements ListenerInterface
     {
         global $api;
         do {
+            // Unblock stuck 
+            $api->db->query(
+                "UPDATE aiEvents SET status = ?, start = NULL, priority = priority * 0.8 WHERE status = ? AND start < ?",
+                PromptStatusEnum::QUEUED,
+                PromptStatusEnum::PROCESSING,
+                time() - 60 * 120
+            );
+
             $id = $api->db->query(
                 "SELECT id FROM aiEvents WHERE status = ? ORDER BY priority DESC, created DESC LIMIT 1",
                 PromptStatusEnum::QUEUED
