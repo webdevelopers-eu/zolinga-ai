@@ -53,9 +53,11 @@ class AiBackendReplace
                 " Replace: " . json_encode($this->replace, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) .
                 " Result was: " . json_encode($newText, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         } else {
+            $error = preg_last_error() !== PREG_NO_ERROR ? preg_last_error_msg() : "unknown error";
             $api->log->error('ai', "Failed to apply regex replacement on the model response. Search: " . json_encode($this->search, JSON_UNESCAPED_SLASHES) .
                 " Replace: " . json_encode($this->replace, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) .
-                " Response was: " . json_encode($text, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                " Response was: " . json_encode($text, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) .
+                " Error: " . $error);
         }
 
         return $text;
