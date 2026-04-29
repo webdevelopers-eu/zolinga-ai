@@ -90,12 +90,12 @@ class AiGenerator implements ListenerInterface
     {
         global $api;
         do {
-            // Unblock stuck 
+            // Unblock stuck or crashed
             $api->db->query(
-                "UPDATE aiEvents SET status = ?, start = NULL, priority = priority * 0.8 WHERE status = ? AND start < ?",
+                "UPDATE aiEvents SET status = ?, start = NULL, priority = priority * 0.9 WHERE status = ? AND start < ?",
                 PromptStatusEnum::QUEUED,
                 PromptStatusEnum::PROCESSING,
-                time() - 60 * 120
+                time() - 60 * 240
             );
 
             $id = $api->db->query(
@@ -140,7 +140,7 @@ class AiGenerator implements ListenerInterface
             } catch (\Throwable $e) {
                 $api->log->error('ai', "Error processing request {$id}: {$e->getMessage()}, trace {$e->getTraceAsString()}");
                 $api->db->query(
-                    "UPDATE aiEvents SET status = ?, end = ?, priority = priority * 0.8 WHERE id = ?",
+                    "UPDATE aiEvents SET status = ?, end = ?, priority = priority * 0.9 WHERE id = ?",
                     PromptStatusEnum::ERROR,
                     time(),
                     $id
