@@ -63,6 +63,12 @@
       "origin": ["internal"]
     },
     {
+      "event": "ai:meta:generated",
+      "description": "Dispatched when AI-generated article metadata is ready (callback from promptAsync).",
+      "class": "\\Zolinga\\AI\\Events\\AiEvent",
+      "origin": ["internal"]
+    },
+    {
       "event": "ai:text:generated",
       "description": "Dispatched when an AI text is created or updated in aiTexts table.",
       "class": "\\Zolinga\\System\\Events\\RequestEvent",

@@ -45,6 +45,19 @@ Prompt variation example:
   - Stored in the database and can be used for categorization, filtering, or later retrieval of related articles
   - Example: `tag="2.0"` to version your generated content
 
+- **`show-meta`**: Comma- or space-separated list of metadata to render alongside the article.
+  - Optional
+  - Supported values: `title`, `description`, `tldr`
+  - When set and metadata is not yet generated, a secondary AI call is queued to produce it
+  - `title` and `description` are injected as `<meta>` tags into `<head>`
+  - `tldr` is rendered as a `<details class="text-tldr">` element
+
+- **`ai-meta`**: The AI backend to use for metadata generation.
+  - Optional
+  - Default: same as `ai` or "default"
+  - Only used when `show-meta` is set and metadata needs to be generated
+  - Some backends may not support structured JSON output, so you can specify a different backend here
+
 - **Output attributes copied from `<ai-text>`**: Only `class`, `style`, `id`, and any `data-*` attributes are copied to the output element.
 
 ## Prompt Variables
@@ -194,5 +207,15 @@ This will generate content wrapped in a `<section>` element with the specified c
 ```
 
 Using a fixed UUID ensures the same content is displayed even if the prompt is slightly modified.
+
+### With SEO metadata generation:
+
+```html
+<ai-text ai="default" uuid="seo-article-example" show-meta="title,description,tldr" ai-meta="default">
+    Write a comprehensive guide to trademark monitoring in the European Union.
+</ai-text>
+```
+
+This queues a secondary AI call to generate `title`, `description`, and `tldr` metadata after the article is saved. The metadata is stored in the `aiTexts` table and rendered alongside the article on subsequent requests.
 
 For more information refer to the [<ai-text>](:ref:event:cms:content:ai-text) reference.

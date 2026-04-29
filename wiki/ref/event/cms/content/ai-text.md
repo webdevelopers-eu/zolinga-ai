@@ -1,7 +1,7 @@
 ## Syntax
 
 ```html
-<ai-text [ai="{AI_BACKEND}"] uuid="{UUID}" [element="{ELEMENT_TYPE}"] [allow-generate-from="{IP_LIST}"] [remove-invalid-links="true"] [tag="{TAG}"] [other_attributes...]}>{PROMPT}</ai-text>
+<ai-text [ai="{AI_BACKEND}"] uuid="{UUID}" [element="{ELEMENT_TYPE}"] [allow-generate-from="{IP_LIST}"] [remove-invalid-links="true"] [tag="{TAG}"] [show-meta="{META_LIST}"] [ai-meta="{AI_BACKEND}"] [other_attributes...]}>{PROMPT}</ai-text>
 ```
 
 Example:
@@ -45,6 +45,14 @@ Restricted generation (only your office IP and localhost can trigger generation)
 </ai-text>
 ```
 
+With SEO metadata generation:
+
+```html
+<ai-text ai="default" uuid="example:seo-article" show-meta="title,description,tldr" ai-meta="default">
+    Write a comprehensive article about trademark monitoring best practices.
+</ai-text>
+```
+
 ## Attributes
 
 - `ai`: The backend to use for generating the article. The backends are defined in your [configuration](:Zolinga Core:Configuration)'s key. Default: `default`.
@@ -54,6 +62,11 @@ Restricted generation (only your office IP and localhost can trigger generation)
 - `remove-invalid-links`: If set to `true`, invalid links found in the generated article will be removed before the article is saved. Use this when you want link cleanup during article generation.
 - `tag`: An optional tag to associate with the generated article. Stored in the database alongside the article and can be used for categorization, filtering, or later retrieval of related articles. The value is stored as-is in the DB `tag` column. Can be used as a version marker (e.g. `tag="2.0"`) to force regeneration by changing the UUID fingerprint indirectly, or simply to group articles by topic.
 - `print-only`: If present, renders the prompt pipeline as plain text instead of generating or displaying an article. Useful for debugging prompts. Each step is shown as `===type===` followed by the prompt text.
+- `show-meta`: Comma- or space-separated list of metadata to render when the article is displayed. Supported values: `title`, `description`, `tldr`. When any of these are requested and the metadata is not yet generated, a secondary AI call is queued to produce it. The metadata is stored in the `aiTexts` table alongside the article.
+  - `title` — injected as `<meta name="title" content="..." append-to="xpath://head"/>`
+  - `description` — injected as `<meta name="description" content="..." append-to="xpath://head"/>`
+  - `tldr` — rendered as a `<details class="text-tldr" open="open">` element with a `<summary>` and the summary text inside a `<p itemprop="abstract">`.
+- `ai-meta`: The AI backend to use for metadata generation. Optional. Defaults to the same backend as `ai` or `default`. Only used when `show-meta` is set and metadata needs to be generated. Some backends may not support structured JSON output, so you can specify a different backend here.
 - Output attributes copied from `<ai-text>`: Only `class`, `style`, `id`, and any `data-*` attributes are copied to the rendered output element.
 
 ## Regeneration
