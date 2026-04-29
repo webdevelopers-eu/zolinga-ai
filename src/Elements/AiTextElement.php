@@ -129,6 +129,14 @@ class AiTextElement implements ListenerInterface
         }
 
         $prompt = $contentDom->textContent;
+        $prompt = $this->expandPrompt($prompt);
+
+        return $prompt;
+    }
+
+    private function expandPrompt(string $prompt): string
+    {
+        global $api;
 
         // Replace {{random|n}} with random string of length n
         // Replace {{random|n|charset}} with random string of length n from charset
@@ -357,6 +365,7 @@ class AiTextElement implements ListenerInterface
         global $api;
 
         $prompt = file_get_contents('module://zolinga-ai/data/meta-prompt.txt');
+        $prompt = $this->expandPrompt($prompt);
         $prompt = str_replace("{{article}}", strip_tags($article->contents), $prompt);
 
         $event = new AiEvent("ai:meta:generated", OriginEnum::INTERNAL, [

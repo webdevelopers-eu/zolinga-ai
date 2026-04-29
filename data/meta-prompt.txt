@@ -27,6 +27,9 @@ TONE AND STYLE:
 
 CONTENT RULES:
 
+* Start the title with appropriate word beginning with "{{random|1|ABCDEFGHIJKLMNOPQRSTUVWYZ}}"
+* Start the description with appropriate word beginning with "{{random|1|ABCDEFGHIJKLMNOPQRSTUVWYZ}}"
+* Start the TLDR with appropriate word beginning with "{{random|1|ABCDEFGHIJKLMNOPQRSTUVWYZ}}"
 * Do not introduce risks or claims not present in the article
 * Avoid phrases like "hidden threats", "serious dangers", "critical risks" - NO FEAR-BASED LANGUAGE
 * Keep language concise and readable 
