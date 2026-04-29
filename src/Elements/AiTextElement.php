@@ -51,11 +51,15 @@ class AiTextElement implements ListenerInterface
         $ai = $event->input->getAttribute("ai") ?: "default";
         $allowedIps = $event->input->getAttribute("allow-generate-from") ?: null;
         $printOnly = $event->input->hasAttribute('print-only');
+        $showMeta = preg_split('/[[:space:],]+/', $event->input->getAttribute("show-meta") ?? "") ?: [];
         $uuid = $event->input->getAttribute("uuid") 
             or throw new Exception("AiTextElement requires a 'uuid' attribute.");
 
         $article = AiTextModel::getTextModel($uuid);
         if (!$printOnly && $article) { // article already exists, render it
+            if (!empty($showMeta)) {
+                $this->renderMeta($event->input, $event->output, $article, $showMeta);
+            }
             $this->renderArticle($event->input, $event->output, $article);
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid rendered.");
             return;
@@ -161,7 +165,8 @@ class AiTextElement implements ListenerInterface
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not published yet. Try again later.")." (UUID: $uuid)");
         }
         $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
-        $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks, $event->input->getAttribute("tag") ?: null);
+        $generateMetaAI = !empty($event->input->getAttribute('show-meta')) ? $event->input->getAttribute('ai-meta') ?: 'default' : null;
+        $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks, $event->input->getAttribute("tag") ?: null, $generateMetaAI);
         $event->setStatus(ContentElementEvent::STATUS_OK, "The article was not published yet. Try again later.");
         header("Retry-After: 86400");
         http_response_code(StatusEnum::SERVICE_UNAVAILABLE->value);                
@@ -173,6 +178,59 @@ class AiTextElement implements ListenerInterface
         $pre->setAttribute("class", "zolinga-text print-only");
         $pre->appendChild(new \DOMText($text));
         $frag->appendChild($pre);
+    }
+
+    private function renderMeta(\DOMElement $input, \DOMDocumentFragment $output, AiTextModel $article, array $showMeta): void
+    {
+        // Generate 
+        if (!$article->title || !$article->description || !$article->tldr) {
+            // Not all AI models support structured output, so we need sseparate attr to specify that.
+            $this->generateMeta($input->getAttribute('ai-meta') ?: 'default', $article);
+            $output->append($output->ownerDocument->createComment("Meta data are not available at the moment. Try again later."));
+            return;
+        }
+
+        // Title as <meta name="title" content="..." append-to="xpath://head"/>
+        if (in_array("title", $showMeta)) {
+            $meta = $output->ownerDocument->createElement("meta");
+            $meta->setAttribute("name", "title");
+            $meta->setAttribute("content", $article->title);    
+            $meta->setAttribute("append-to", "xpath://head");
+            $output->appendChild($meta);
+        }
+
+        // Description as <meta name="description" content="..." append-to="xpath://head"/>
+        if (in_array("description", $showMeta)) {
+            $meta = $output->ownerDocument->createElement("meta");
+            $meta->setAttribute("name", "description");
+            $meta->setAttribute("content", $article->description);    
+            $meta->setAttribute("append-to", "xpath://head");
+            $output->appendChild($meta);
+        }
+
+        // <details>
+        //     <summary>TL;DR</summary>
+        //     <p>This is the short summary of the long article.</p>
+        // </details>
+        // $detailsElement = $this->createElement($output, "details", ["class" => "post-tldr", "open" => "open", "title" => dgettext('zolinga-autoblog', "TL;DR")], "");
+        // $this->createElement($detailsElement, "summary", [], dgettext('zolinga-autoblog', "Summary")); 
+        // $this->createElement($detailsElement, "p", [
+        //     "itemprop" => "abstract",
+        //     "title" => dgettext('zolinga-autoblog', "TL;DR - A concise summary of the article") 
+        // ], $article->tldr);
+        if (in_array("tldr", $showMeta)) {        
+            $detailsElement = $output->ownerDocument->createElement("details");
+            $detailsElement->setAttribute("class", "text-tldr");
+            $detailsElement->setAttribute("open", "open");
+            $detailsElement->setAttribute("title", dgettext('zolinga-ai', "TL;DR"));
+            $summaryElement = $output->ownerDocument->createElement("summary", dgettext('zolinga-ai', "Summary"));
+            $detailsElement->appendChild($summaryElement);
+            $pElement = $output->ownerDocument->createElement("p", $article->tldr);
+            $pElement->setAttribute("itemprop", "abstract");
+            $pElement->setAttribute("title", dgettext('zolinga-ai', "TL;DR - A concise summary of the article"));
+            $detailsElement->appendChild($pElement);
+            $output->appendChild($detailsElement);
+        }
     }
 
     private function renderArticle(\DOMElement $input, \DOMDocumentFragment $frag, AiTextModel $article): void
@@ -265,7 +323,7 @@ class AiTextElement implements ListenerInterface
     * @param string|null $tag An optional tag to associate with the article. Can be used for categorization or later retrieval. Will be stored in DB column 'tag'.
     * @return void
     */
-    private function generateArticle(string $uuid, string $ai, array $list, bool $removeInvalidLinks = false, ?string $tag = null): void
+    private function generateArticle(string $uuid, string $ai, array $list, bool $removeInvalidLinks = false, ?string $tag = null, ?bool $generateMetaAI = null): void
     {
         global $api;
         
@@ -274,6 +332,7 @@ class AiTextElement implements ListenerInterface
         }
         
         $event = new AiEvent("ai:article:generated", OriginEnum::INTERNAL, [
+            'uuid' => $uuid,
             'ai' => $ai,
             'tag' => $tag,
             'prompt' => $list,
@@ -285,10 +344,50 @@ class AiTextElement implements ListenerInterface
                 'presence_penalty' => 0.6
             ],
             'triggerURL' => $api->url->getCurrentUrl(),
-            'removeInvalidLinks' => $removeInvalidLinks
+            'removeInvalidLinks' => $removeInvalidLinks,
+            'generateMetaAI' => $generateMetaAI
         ]);
-        $event->uuid = $uuid;
+        $event->uuid = "ai:text:$uuid"; // override event UUID to match article UUID for easier tracking and deduplication
         
+        $api->ai->promptAsync($event);
+    }
+
+    private function generateMeta(string $ai, AiTextModel $article): void
+    {
+        global $api;
+
+        $prompt = file_get_contents('module://zolinga-ai/data/meta-prompt.txt');
+        $prompt = str_replace("{{article}}", strip_tags($article->contents), $prompt);
+
+        $event = new AiEvent("ai:meta:generated", OriginEnum::INTERNAL, [
+            'uuid' => $article->uuid,
+            'ai' => $ai, // some models may not support json format 
+            'prompt' => $prompt,
+            'priority' => 0.55, // slightly higher to add meta to already generated articles faster
+            'options' => [
+                'temperature' => 0.9,
+                'repeat_penalty' => 1.3,
+                'presence_penalty' => 0.6
+            ],
+            "format" => [
+                'type' => 'object',
+                'required' => ['title', 'description', 'tldr'],
+                'properties' => [
+                    'title' => [
+                        'type' => 'string',
+                    ],
+                    'description' => [
+                        'type' => 'string'
+                    ],
+                    'tldr' => [
+                        'type' => 'string'
+                    ],
+                ],
+                'additionalProperties' => false,
+            ]
+        ]);
+        $event->uuid = "ai:meta:$article->uuid"; // override event UUID to match article UUID for easier tracking and deduplication
+
         $api->ai->promptAsync($event);
     }
     
@@ -305,18 +404,49 @@ class AiTextElement implements ListenerInterface
     public function onGenerateArticle(AiEvent $event): void
     {
         global $api;
-        
-        $uuid = $event->uuid;
+
+        $uuid = $event->response['uuid'] ?? $event->uuid;
         $contents = $event->response['data'];
         $tag = $event->request['tag'] ?? null;
         $triggerURL = $event->request['triggerURL'] ?? null;
         $removeInvalidLinks = $event->request['removeInvalidLinks'] ?? false;
-        
+        $generateMetaAI = $event->request['generateMetaAI'] ?? null;
+
         $article = AiTextModel::getTextModel($uuid) ?: AiTextModel::createTextModel($uuid, $contents, $triggerURL, $tag);
-        $article->setContents($contents, $removeInvalidLinks); // this setter converts Markdown to HTML
+        $article->setContentsMarkdown($contents, $removeInvalidLinks); // this setter converts Markdown to HTML
 
         $article->save();
+
+        if ($generateMetaAI) { // generate meta right away - we know they are requested
+            $api->log->info("ai", "Triggering meta generation for article $uuid");
+            $this->generateMeta($generateMetaAI, $article);
+        }
         
         $event->setStatus(AiEvent::STATUS_OK, "Article saved.");
+    }
+
+
+    /**
+     * Update meta data.
+     *
+     * @param AiEvent $event
+     * @return void
+     */
+    public function onGenerateMeta(AiEvent $event): void
+    {
+        global $api;
+
+        $uuid = $event->request['uuid'];
+        $response = $event->response['data'] or throw new Exception("AI response is missing 'data' field for meta generation.");
+        $article = AiTextModel::getTextModel($uuid) or throw new Exception("Article with UUID $uuid not found for meta generation.");
+
+        $article->title = $response['title'] or throw new Exception("Title is required in meta generation response.");
+        $article->description = $response['description'] or throw new Exception("Description is required in meta generation response.");
+        $article->tldr = $response['tldr'] or throw new Exception("TL;DR is required in meta generation response.");
+
+        $api->log->info("ai", "Meta generated for article $uuid: title='{$article->title}'");
+        $article->save();
+
+        $event->setStatus(AiEvent::STATUS_OK, "Article meta updated.");
     }
 }

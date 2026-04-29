@@ -2,10 +2,6 @@
 
 namespace Zolinga\AI\Model;
 
-use Parsedown;
-use PhpParser\Node\Expr\Cast\String_;
-use Zolinga\AI\Enum\ResponseTextFormat;
-
 /**
  * AI article model.
  * 
@@ -39,7 +35,22 @@ class AiTextModel
      *
      * @var string
      */
-    private string $contents;
+    public string $contents; 
+
+    /**
+     * Title of the article. Optional, can be null.
+     */
+    public ?string $title;
+
+    /**
+     * Description of the article. Optional, can be null.
+     */
+    public ?string $description;
+
+    /**
+     * TL;DR summary of the article. Optional, can be null.
+     */
+    public ?string $tldr;
 
     /**
      * What URL triggered the generation of this article. Optional, can be null if not applicable.
@@ -71,30 +82,13 @@ class AiTextModel
         $this->id = $rowData['id'];
         $this->uuid = $rowData['uuid'];
         $this->contents = $rowData['contents'];
+        $this->title = $rowData['title'] ?? null;
+        $this->description = $rowData['description'] ?? null;
+        $this->tldr = $rowData['tldr'] ?? null;
         $this->triggerURL = $rowData['triggerURL'] ?? null;
         $this->tag = $rowData['tag'] ?? null;
         $this->updated = strtotime($rowData['updated']);
         // $contents = preg_replace('/<think>.*?<\/think>/', '', $this->contents);
-    }
-
-    public function __get(string $name) {
-        switch ($name) {
-            case 'contents':
-                return $this->contents;
-
-            default:
-                throw new \Exception("Property '$name' does not exist.", 1224);
-        }
-    }
-
-    public function __set(string $name, $value) {
-        switch ($name) {
-            case 'contents':
-                $this->setContents($value);
-                break;
-            default:
-                throw new \Exception("Property '$name' does not exist.", 1224);
-        }
     }
 
     /**
@@ -103,7 +97,7 @@ class AiTextModel
      * @param string $contents The article contents.
      * @return void
      */
-    public function setContents(string $contents, bool $removeInvalidLinks = false): void {
+    public function setContentsMarkdown(string $contents, bool $removeInvalidLinks = false): void {
         global $api;
 
         $contents = trim(preg_replace('/<think>.*?<\/think>/s', '', $contents));
@@ -135,7 +129,6 @@ class AiTextModel
         }
 
         $contents = $doc->saveXML();  
-
         $this->contents = $contents;
     }
 
@@ -149,9 +142,9 @@ class AiTextModel
 
         $api->db->query("
             UPDATE aiTexts 
-            SET contents = ?, triggerURL = ?, updated = UNIX_TIMESTAMP(), tag = ?
+            SET contents = ?, title = ?, description = ?, tldr = ?, triggerURL = ?, updated = UNIX_TIMESTAMP(), tag = ?
             WHERE uuidHash = UNHEX(SHA1(?))", 
-            $this->contents, $this->triggerURL, $this->tag, $this->uuid);
+            $this->contents, $this->title, $this->description, $this->tldr, $this->triggerURL, $this->tag, $this->uuid);
     }
 
     /**
@@ -163,15 +156,15 @@ class AiTextModel
      * @param string|null $tag An optional tag to associate with the article. Can be used for categorization or later retrieval. Will be stored in DB column 'tag'.
      * @return AiTextModel The created article.
      */
-    static public function createTextModel(string $uuid, string $contents, ?string $triggerURL, ?string $tag = null): AiTextModel
+    static public function createTextModel(string $uuid, string $contents, ?string $triggerURL, ?string $tag = null, ?string $title = null, ?string $description = null, ?string $tldr = null): AiTextModel
     {
         global $api;
 
         $id = $api->db->query("
-            INSERT INTO aiTexts (uuid, uuidHash, contents, triggerURL, tag, updated) 
-            VALUES (?, UNHEX(SHA1(?)), ?, ?, ?, UNIX_TIMESTAMP())
-            ON DUPLICATE KEY UPDATE contents = VALUES(contents), triggerURL = VALUES(triggerURL), tag = VALUES(tag), updated = VALUES(updated)
-        ", $uuid, $uuid, $contents, $triggerURL, $tag);
+            INSERT INTO aiTexts (uuid, uuidHash, contents, title, description, tldr, triggerURL, tag, updated) 
+            VALUES (?, UNHEX(SHA1(?)), ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP())
+            ON DUPLICATE KEY UPDATE contents = VALUES(contents), title = VALUES(title), description = VALUES(description), tldr = VALUES(tldr), triggerURL = VALUES(triggerURL), tag = VALUES(tag), updated = VALUES(updated)
+        ", $uuid, $uuid, $contents, $title, $description, $tldr, $triggerURL, $tag);
 
         if (!is_numeric($id)) {
             throw new \Exception("Failed to insert AI article uuid " . json_encode($uuid) . " into database.", 1225);

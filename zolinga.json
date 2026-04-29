@@ -1,6 +1,6 @@
 {
   "name": "Zolinga AI",
-  "version": "1.4",
+  "version": "1.5",
   "description": "AI power tools and services.",
   "authors": [
     "Daniel Sevcik <danny@zolinga.net>"
@@ -40,6 +40,15 @@
       "event": "ai:article:generated",
       "class": "\\Zolinga\\AI\\Elements\\AiTextElement",
       "method": "onGenerateArticle",
+      "origin": [
+        "internal"
+      ]
+    },
+    {
+      "description": "Update article meta data after generation.",
+      "event": "ai:meta:generated",
+      "class": "\\Zolinga\\AI\\Elements\\AiTextElement",
+      "method": "onGenerateMeta",
       "origin": [
         "internal"
       ]

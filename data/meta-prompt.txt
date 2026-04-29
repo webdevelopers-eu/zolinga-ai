@@ -1,0 +1,36 @@
+GENERATE SEO METADATA FOR THE ARTICLE BELOW.
+
+Output MUST be valid JSON only, no extra text.
+
+SCHEMA:
+
+{
+  "title": string,
+  "description": string,
+  "tldr": string
+}
+
+REQUIREMENTS:
+
+Title: clear, specific, keyword relevant, not clickbait - what information can user learn and how will it help them? No negative language, no negative words (threats, risks, dangers, etc.)
+Description: 110 to 160 characters, plain and informative - should contain novel, unusual, or helpful facts containedf in the article. Avoid negative words (threats, risks, dangers, etc.), focus on positives what article brings/teaches.
+TLDR: 4 to 16 sentences, practical summary of the article - focus on what it brings to the reader, what they will learn, and how it can help them. No negative language.
+
+TONE AND STYLE:
+
+* Spin ALL information into positive, helpful, and useful language - e.g. WRONG: "threats are lurking out there", CORRECT: "we teach you how to defend yourself against threats" 
+* Do not speak about threats or anything negative, focus on positives, nothing that sounds like urging to purchase goods or services.
+* Professional, emotionless, cold-blooded, and user focused
+* AVOID fear based language, hype, or alarmism or even slight exaggeration or dramatic wording - focus exclusively on the useful/helpful information provided in the article
+* Focus on what the reader will learn or be able to do
+* Prefer concrete wording over vague phrases
+
+CONTENT RULES:
+
+* Do not introduce risks or claims not present in the article
+* Avoid phrases like "hidden threats", "serious dangers", "critical risks" - NO FEAR-BASED LANGUAGE
+* Keep language concise and readable 
+
+ARTICLE:
+
+{{article}}

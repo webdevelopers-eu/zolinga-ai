@@ -322,16 +322,28 @@ private function httpRequest(string $url, array $request, string $model, bool $d
             "Accept-Charset: utf-8\r\n",
             'content' => $raw,
             'timeout' => 60 * 15, // seconds
+            'ignore_errors' => true, // return body even on HTTP 4xx/5xx
         ],
     ]));
     ini_set('default_socket_timeout', $prevSocketTimeout);
-    
-    if (!$response) {
+
+    // Detect HTTP status from $http_response_header (populated by file_get_contents)
+    $statusCode = 0;
+    if (!empty($http_response_header)) {
+        if (preg_match('#HTTP/\d\.\d\s+(\d+)#', $http_response_header[0], $m)) {
+            $statusCode = (int) $m[1];
+        }
+    }
+
+    // We may get HTTP/1.1 500 Internal Server Error when the model does not support the requested format.
+    // In that case the response body is: {"error":"failed to load model vocabulary required for format"}
+    if (!$response || !($statusCode >= 200 && $statusCode < 300)) {
         // Generate curl reproducible command
         $error = error_get_last();
         $curl = "curl -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'Accept-Charset: utf-8' -d ".escapeshellarg($raw)." '$url'";
-        $api->log->error('ai', "Failed to get a response from the AI model. Last error: " . json_encode($error) . ". Try to run the following command in your terminal to reproduce the error: $curl");
-        throw new \Exception("Failed to get a response from the AI model.", 1221);
+
+        $api->log->error('ai', "Failed to get a response from the AI model. HTTP $statusCode. Last error: " . json_encode($error) . ". Response body: " . ($response ?: 'empty') . ". Try to run the following command in your terminal to reproduce the error: $curl");
+        throw new \Exception("Failed to get a response from the AI model. HTTP $statusCode: " . ($response ?: '-- empty response --'), 1221);
     }
     
     $data = json_decode($response, true, 512, JSON_UNESCAPED_UNICODE)
