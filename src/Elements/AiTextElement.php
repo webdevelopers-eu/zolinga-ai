@@ -3,7 +3,6 @@
 namespace Zolinga\AI\Elements;
 
 use Exception;
-use Parsedown;
 use Zolinga\AI\Events\AiEvent;
 use Zolinga\AI\Model\AiTextModel;
 use Zolinga\Cms\Events\ContentElementEvent;
@@ -339,23 +338,28 @@ class AiTextElement implements ListenerInterface
             return;
         }
         
-        $event = new AiEvent("ai:article:generated", OriginEnum::INTERNAL, [
-            'uuid' => $uuid,
-            'ai' => $ai,
-            'tag' => $tag,
-            // Make the articles maximally variable so they are not
-            // treated as duplicates by search engines.
-            'options' => [
-                'temperature' => 0.9,
-                'repeat_penalty' => 1.3,
-                'presence_penalty' => 0.6
+        $event = new AiEvent(
+            $uuid,
+            "ai:article:generated",
+            OriginEnum::INTERNAL,
+            [
+                'ai' => $ai,
+                'tag' => $tag,
+                // Make the articles maximally variable so they are not
+                // treated as duplicates by search engines.
+                'options' => [
+                    'temperature' => 0.9,
+                    'repeat_penalty' => 1.3,
+                    'presence_penalty' => 0.6
+                ],
+                'prompt' => $list
             ],
-            'triggerURL' => $api->url->getCurrentUrl(),
-            'removeInvalidLinks' => $removeInvalidLinks,
-            'generateMetaAI' => $generateMetaAI,
-            'prompt' => $list
-        ]);
-        $event->uuid = $uuid; // override event UUID to match article UUID for easier tracking and deduplication
+            [
+                'triggerURL' => $api->url->getCurrentUrl(),
+                'removeInvalidLinks' => $removeInvalidLinks,
+                'generateMetaAI' => $generateMetaAI,
+            ],
+        );
         
         $api->ai->promptAsync($event);
     }
@@ -368,34 +372,37 @@ class AiTextElement implements ListenerInterface
         $prompt = $this->expandPrompt($prompt);
         $prompt = str_replace("{{article}}", strip_tags($article->contents), $prompt);
 
-        $event = new AiEvent("ai:meta:generated", OriginEnum::INTERNAL, [
-            'uuid' => $article->uuid,
-            'ai' => $ai, // some models may not support json format 
-            'priority' => 0.55, // slightly higher to add meta to already generated articles faster
-            'options' => [
-                'temperature' => 0.9,
-                'repeat_penalty' => 1.3,
-                'presence_penalty' => 0.6
-            ],
-            "format" => [
-                'type' => 'object',
-                'required' => ['title', 'description', 'tldr'],
-                'properties' => [
-                    'title' => [
-                        'type' => 'string',
-                    ],
-                    'description' => [
-                        'type' => 'string'
-                    ],
-                    'tldr' => [
-                        'type' => 'string'
-                    ],
+        $event = new AiEvent(
+            $article->uuid,
+            "ai:meta:generated",
+            OriginEnum::INTERNAL,
+            [
+                'ai' => $ai, // some models may not support json format 
+                'priority' => 0.55, // slightly higher to add meta to already generated articles faster
+                'options' => [
+                    'temperature' => 0.9,
+                    'repeat_penalty' => 1.3,
+                    'presence_penalty' => 0.6
                 ],
-                'additionalProperties' => false,
+                "format" => [
+                    'type' => 'object',
+                    'required' => ['title', 'description', 'tldr'],
+                    'properties' => [
+                        'title' => [
+                            'type' => 'string',
+                        ],
+                        'description' => [
+                            'type' => 'string'
+                        ],
+                        'tldr' => [
+                            'type' => 'string'
+                        ],
+                    ],
+                    'additionalProperties' => false,
+                ],
+                'prompt' => $prompt,
             ],
-            'prompt' => $prompt,
-        ]);
-        $event->uuid = $article->uuid; // override event UUID to match article UUID for easier tracking and deduplication
+        );
 
         $api->ai->promptAsync($event);
     }
@@ -417,9 +424,9 @@ class AiTextElement implements ListenerInterface
         $uuid = $event->uuid;
         $contents = $event->response['data'];
         $tag = $event->request['tag'] ?? null;
-        $triggerURL = $event->request['triggerURL'] ?? null;
-        $removeInvalidLinks = $event->request['removeInvalidLinks'] ?? false;
-        $generateMetaAI = $event->request['generateMetaAI'] ?? null;
+        $triggerURL = $event->response['triggerURL'] ?? null;
+        $removeInvalidLinks = $event->response['removeInvalidLinks'] ?? false;
+        $generateMetaAI = $event->response['generateMetaAI'] ?? null;
 
         $article = AiTextModel::getTextModel($uuid) ?: AiTextModel::createTextModel($uuid, $contents, $triggerURL, $tag);
         $article->setContentsMarkdown($contents, $removeInvalidLinks); // this setter converts Markdown to HTML

@@ -91,38 +91,47 @@ When `prompt` is an array, each item may define:
 
 Step options are merged on top of request-level options, so step-level values override the defaults for matching keys. The same merge behavior applies to `qc` steps. The merged step options are then passed to `$api->ai->prompt()`, where configured backend `options` are still applied as the final layer.
 
+The **fifth argument** (`$response`) is an `ArrayAccess|array` that you can pre-fill with arbitrary data. This data is preserved through the async round-trip and delivered to your callback listener alongside the generated text. Use it to store record IDs, relation keys, entity types, or any other metadata your listener needs to process the result.
+
 Example:
 
 ```php
-$aiEvent = new AiEvent('my:callback:event', OriginEnum::INTERNAL, [
-	'ai' => 'default',
-	'options' => [
-		'temperature' => 0.1,
-		'num_ctx' => 8192,
-	],
-	'prompt' => [
-		[
-			'prompt' => 'Write a factual draft about EU trademark opposition periods.',
-			'type' => 'step',
-		],
-		[
-			'prompt' => '- No marketing language.\n- No external links.',
-			'type' => 'qc',
-			'options' => [
-				'temperature' => 0,
-			],
-		],
-		[
-			'prompt' => 'Rewrite this for founders:\n\n{{input}}',
-			'type' => 'step',
-			'options' => [
-				'temperature' => 0.4,
-			],
-		],
-	],
-], [
-	'jobId' => 42,
-]);
+$aiEvent = new AiEvent(
+    'my-unique-id',          // required — duplicate UUIDs are silently ignored
+    'my:callback:event',     // dispatched after generation completes
+    OriginEnum::INTERNAL,
+    [                         // $request
+        'ai' => 'default',
+        'options' => [
+            'temperature' => 0.1,
+            'num_ctx' => 8192,
+        ],
+        'prompt' => [
+            [
+                'prompt' => 'Write a factual draft about EU trademark opposition periods.',
+                'type' => 'step',
+            ],
+            [
+                'prompt' => "- No marketing language.\n- No external links.",
+                'type' => 'qc',
+                'options' => [
+                    'temperature' => 0,
+                ],
+            ],
+            [
+                'prompt' => "Rewrite this for founders:\n\n{{input}}",
+                'type' => 'step',
+                'options' => [
+                    'temperature' => 0.4,
+                ],
+            ],
+        ],
+    ],
+    [                         // $response — pre-fill with custom metadata
+        'articleId' => 42,
+        'sectionKey' => 'opposition-period',
+    ],
+);
 
 $api->ai->promptAsync($aiEvent);
 ```

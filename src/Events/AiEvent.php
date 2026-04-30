@@ -19,23 +19,30 @@ use Zolinga\System\Types\OriginEnum;
  * - 'prompt' (string|array, required): Either a plain prompt string or an array of pipeline steps.
  *    Each step: ['prompt' => string, 'type' => 'step'|'qc']. See <ai-text> pipeline docs.
  * - 'format' (array|null): JSON Schema for structured output, or null for plain text. Default: null.
- * - 'removeInvalidLinks' (bool): Strip invalid links from generated HTML. Default: false.
  * - 'priority' (float): Processing priority between 0 and 1 (exclusive). Higher = processed first. Default: 0.5.
  * - Any custom keys you add to request[] are preserved through serialization.
  *
- * Response keys (set after processing):
- * - 'data' (string|array): The AI-generated content. String for plain text, array if format was set.
+ * Response keys:
+ * - 'data' (string|array): The AI-generated content — set by the system after processing.
+ *   String for plain text, array if format was set.
  * - Any custom keys you add to response[] are preserved and available in your callback listener.
+ *   Pre-fill response with identifiers (e.g. record IDs, field names, entity types) that your
+ *   callback needs to process the result — they survive the async round-trip unchanged.
  *
  * Usage:
  * ```php
- * $event = new AiEvent("my:callback:event", OriginEnum::INTERNAL, [
- *     'ai' => 'default',
- *     'prompt' => 'Write about Zolinga.',
- * ], [
- *     'myId' => 123, // custom data preserved for your callback
- * ]);
- * $event->uuid = 'my-unique-id'; // optional, auto-generated if not set
+ * $event = new AiEvent(
+ *     'my-unique-id', // required — duplicate UUIDs are silently ignored
+ *     "my:callback:event",
+ *     OriginEnum::INTERNAL,
+ *     [
+ *         'ai' => 'default',
+ *         'prompt' => 'Write about Zolinga.',
+ *     ],
+ *     [
+ *         'myId' => 123, // custom data preserved for your callback
+ *     ],
+ * );
  * $api->ai->promptAsync($event);
  * ```
  *
@@ -43,12 +50,14 @@ use Zolinga\System\Types\OriginEnum;
  * @date 2025-02-07
  */
 class AiEvent extends RequestResponseEvent {
+    public readonly string $uuid;
+
     private const REQUEST_DEFAULTS = [
         'ai' => 'default',
         'prompt' => [],
         'format' => null,
-        'removeInvalidLinks' => false,
         'priority' => 0.5,
+        'options' => [],
     ];
 
     private const REQUEST_REQUIRED = [
@@ -59,13 +68,22 @@ class AiEvent extends RequestResponseEvent {
     /**
      * AiEvent constructor.
      *
+     * @param string $uuid Unique identifier for deduplication. Duplicate UUIDs are silently ignored by promptAsync().
      * @param string $type The type of the event.
      * @param OriginEnum $origin The origin of the event, defaults to OriginEnum::INTERNAL.
      * @param ArrayAccess|array $request The request data, defaults to a new ArrayObject. Required keys: ai, prompt.
      * @param ArrayAccess|array $response The response data, defaults to a new ArrayObject.
      */
-    public function __construct(string $type, OriginEnum $origin = OriginEnum::INTERNAL, ArrayAccess|array $request = new ArrayObject, ArrayAccess|array $response = new ArrayObject) {
+    public function __construct(
+        string $uuid,
+        string $type,
+        OriginEnum $origin = OriginEnum::INTERNAL,
+        ArrayAccess|array $request = new ArrayObject,
+        ArrayAccess|array $response = new ArrayObject,
+    ) {
         global $api;
+
+        $this->uuid = $uuid;
         
         $request = array_merge(self::REQUEST_DEFAULTS, (array) $request);
         $this->validateRequest($request);
@@ -96,5 +114,28 @@ class AiEvent extends RequestResponseEvent {
         if (!is_array($api->config['ai']['backends'][$request['ai']])) {
             throw new \Exception("AI backend '{$request['ai']}' not found in configuration key '.config.ai.backends.{$request['ai']}'.");
         }
+
+        // Check there are no unknown keys in the request that might indicate a typo or misunderstanding of the API.
+        $allowedKeys = array_merge(array_keys(self::REQUEST_DEFAULTS), self::REQUEST_REQUIRED);
+        foreach ($request as $key => $value) {
+            if (!in_array($key, $allowedKeys)) {
+                $api->log->warning('ai', "Unknown parameter '$key' in AiEvent request. Allowed keys are: " . implode(', ', $allowedKeys) . ". This parameter will be preserved in the request and available in your callback, but double-check for typos or misunderstandings of the API.");
+            }
+        }
+    }
+
+    public static function fromArray(array $data): static
+    {
+        $event = new static(
+            $data['uuid'],
+            $data['type'],
+            OriginEnum::tryFrom($data['origin']),
+            new ArrayObject($data['request']),
+            new ArrayObject($data['response']),
+        );
+        if ($data['status']) {
+            $event->setStatus($data['status'], $data['message']);
+        }
+        return $event;
     }
 }

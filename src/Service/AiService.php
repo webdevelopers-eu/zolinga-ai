@@ -44,6 +44,7 @@ class AiService implements ServiceInterface
     * 
     * Example usage:
     *  $api->ai->promptAsync(new AiEvent(
+    *      'my-unique-id', // required — duplicate UUIDs are silently ignored
     *      "my-response-process", 
     *      request: [
     *        'ai' => 'default',
@@ -68,7 +69,6 @@ class AiService implements ServiceInterface
     * any data you need in the $event->response property so it is available in your callback.
     *
     * @param AiEvent $event The event to handle the AI response.
-    * @param array $options Optional parameters to customize the prompt.
     * @throws \Exception If the request cannot be processed.
     * 
     * @return string The request ID - technically it returns $event->uuid

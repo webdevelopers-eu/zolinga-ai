@@ -117,57 +117,56 @@ After processing, `$event->response['data']` contains the AI output. It is a str
 ### Example
 
 ```php
-$aiEvent = new AiEvent('my-callback-event', OriginEnum::INTERNAL, [
-    'ai' => 'default',
-    'prompt' => 'Write a reasonably long blog post about the Zolinga platform.',
-    'format' => null,
-    'options' => [
-        'temperature' => 0.3,
+$aiEvent = new AiEvent(
+    'my-unique-id', // required — duplicate UUIDs are silently ignored
+    'my-callback-event',
+    OriginEnum::INTERNAL,
+    [
+        'ai' => 'default',
+        'prompt' => 'Write a reasonably long blog post about the Zolinga platform.',
+        'format' => null,
+        'options' => [
+            'temperature' => 0.3,
+        ],
     ],
-], [
-    'myCustomId' => 42,
-]);
-$aiEvent->uuid = 'my-unique-id';
+    [
+        'myCustomId' => 42,
+    ],
+);
 $api->ai->promptAsync($aiEvent);
 ```
 
 When the AI generates the content, it will trigger the specified callback event. Your listener for that event receives the same response payload plus any custom response fields you stored before queueing.
 
 The `myCustomId` response field is preserved and available in your callback.
-The `uuid` assignment is optional.
 
 You should have your [event listener](:Zolinga Core:Events and Listeners) for the `my-callback-event` event to handle the generated article.
 
 ### Pipeline Example
 
 ```php
-$aiEvent = new AiEvent('my-callback-event', OriginEnum::INTERNAL, [
-    'ai' => 'default',
-    'options' => [
-        'temperature' => 0.1,
-        'num_ctx' => 8192,
-    ],
-    'prompt' => [
-        [
-            'prompt' => 'Write a 500-word article about AI.',
-            'type' => 'step',
+$aiEvent = new AiEvent(
+    'my-unique-id', // required — duplicate UUIDs are silently ignored
+    'my-callback-event',
+    OriginEnum::INTERNAL,
+    [
+        'ai' => 'default',
+        'options' => [
+            'temperature' => 0.1,
+            'num_ctx' => 8192,
         ],
-        [
-            'prompt' => '- No personal names.\n- No external links.',
-            'type' => 'qc',
-            'options' => [
-                'temperature' => 0,
+        'prompt' => [
+            [
+                'prompt' => 'Write a 500-word article about AI.',
+                'type' => 'step',
             ],
-        ],
-        [
-            'prompt' => 'Add an introduction and conclusion to:\n\n{{input}}',
-            'type' => 'step',
-            'options' => [
-                'temperature' => 0.4,
-            ],
-        ],
+            [
+                'prompt' => '- No personal names.\n- No external links.',
+                'type' => 'qc',
+            ]
+        ]
     ],
-]);
+);
 $api->ai->promptAsync($aiEvent);
 ```
 

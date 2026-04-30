@@ -10,14 +10,20 @@ Internal event fired when an AI-generated article is ready to be saved. The hand
 
 ## Parameters
 
-The event carries the AI generation result:
+### Request
 
 | Property | Type | Description |
 |---|---|---|
 | `ai` | `string` | AI backend name |
-| `uuid` | `string` | Unique identifier for the generated article |
-| `prompt` | `string` | The original prompt used for generation |
-| `tag` | `string|null` | Optional tag for categorization or versioning |
+| `prompt` | `string\|array` | The prompt or pipeline steps used for generation |
+| `tag` | `string\|null` | Optional tag for categorization or versioning |
+| `options` | `array` | AI generation options (temperature, penalties, etc.) |
+
+### Response
+
+| Property | Type | Description |
+|---|---|---|
+| `data` | `string\|array` | The AI-generated content |
 | `triggerURL` | `string|null` | URL that triggered the generation |
 | `removeInvalidLinks` | `bool` | Whether invalid links were removed during generation |
 | `generateMetaAI` | `string|null` | Backend to use for metadata generation, or `null` if not requested |
