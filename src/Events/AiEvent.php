@@ -50,7 +50,14 @@ use Zolinga\System\Types\OriginEnum;
  * @date 2025-02-07
  */
 class AiEvent extends RequestResponseEvent {
-    public readonly string $uuid;
+    public ?string $uuid {
+        set {
+            if (empty($value)) {
+                throw new \Exception("UUID cannot be empty.");
+            }
+            $this->uuid = $value;
+        }
+    }
 
     private const REQUEST_DEFAULTS = [
         'ai' => 'default',
@@ -120,6 +127,8 @@ class AiEvent extends RequestResponseEvent {
         foreach ($request as $key => $value) {
             if (!in_array($key, $allowedKeys)) {
                 $api->log->warning('ai', "Unknown parameter '$key' in AiEvent request. Allowed keys are: " . implode(', ', $allowedKeys) . ". This parameter will be preserved in the request and available in your callback, but double-check for typos or misunderstandings of the API.");
+            } elseif (empty($value) && in_array($key, self::REQUEST_REQUIRED)) {
+                throw new \Exception("Required parameter '$key' cannot be empty in AiEvent request.");
             }
         }
     }
