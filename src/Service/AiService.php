@@ -368,8 +368,8 @@ private function httpRequest(string $url, array $request, string $model, bool $d
         $api->log->warning('ai', "The response from the AI model is missing required statistics. Response: " . json_encode($data) . " Request: $raw");
         throw new \Exception("The response from the AI model is missing required statistics.", 12231);
     } else {
-        $promptSpeed = round($data['prompt_eval_count'] / $data['prompt_eval_duration'] * 1000000000);
-        $responseSpeed = round($data['eval_count'] / $data['eval_duration'] * 1000000000);
+        $promptSpeed = round($data['prompt_eval_count'] / ($data['prompt_eval_duration'] ?? 1) * 1000000000);
+        $responseSpeed = round($data['eval_count'] / ($data['eval_duration'] ?? 1) * 1000000000);
         $stat[]="response tokens {$data['eval_count']} [$responseSpeed tokens/s]";
         $stat[]="prompt tokens {$data['prompt_eval_count']} [$promptSpeed tokens/s]";
     }
