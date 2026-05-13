@@ -365,8 +365,8 @@ private function httpRequest(string $url, array $request, string $model, bool $d
         $stat[]="response tokens {$data['eval_count']}";
         $stat[]="prompt tokens {$data['prompt_eval_count']}";
     } elseif (!($data['prompt_eval_duration'] ?? null)) {
-        $api->log->warning('ai', "The response from the AI model is missing required statistics. Response: " . json_encode($data) . " Request: $raw");
-        throw new \Exception("The response from the AI model is missing required statistics.", 12231);
+        // Cloud models may not send them
+        $stat[]="stats not available";
     } else {
         $promptSpeed = round($data['prompt_eval_count'] / ($data['prompt_eval_duration'] ?? 1) * 1000000000);
         $responseSpeed = round($data['eval_count'] / ($data['eval_duration'] ?? 1) * 1000000000);
