@@ -68,6 +68,7 @@ class AiTextElement implements ListenerInterface
         $forceGenerate = isset($_GET['regenerate']);
         
         if (!$canGenerate) {
+            // TRANSLATORS: Error shown when an article cannot be found and generation is not allowed for the requesting IP.
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not found.")." (Your IP is {$_SERVER['REMOTE_ADDR']})");
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found and generation not allowed.");
             http_response_code(StatusEnum::GONE->value);
@@ -169,6 +170,7 @@ class AiTextElement implements ListenerInterface
         if ($placeholder) {
             $this->renderPlaceholder($event->output, $placeholder);
         } else {
+            // TRANSLATORS: Message shown when an article exists but is not yet published; suggests retrying later.
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not published yet. Try again later.")." (UUID: $uuid)");
         }
         $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
@@ -229,11 +231,14 @@ class AiTextElement implements ListenerInterface
             $detailsElement = $output->ownerDocument->createElement("details");
             $detailsElement->setAttribute("class", "text-tldr");
             $detailsElement->setAttribute("open", "open");
+            // TRANSLATORS: Short label for a condensed summary view (TL;DR).
             $detailsElement->setAttribute("title", dgettext('zolinga-ai', "TL;DR"));
+            // TRANSLATORS: Label for the summary element; a short descriptor for the article summary.
             $summaryElement = $output->ownerDocument->createElement("summary", dgettext('zolinga-ai', "Summary"));
             $detailsElement->appendChild($summaryElement);
             $pElement = $output->ownerDocument->createElement("p", $article->tldr);
             $pElement->setAttribute("itemprop", "abstract");
+            // TRANSLATORS: Title attribute for the TL;DR paragraph; explains that this is a concise article summary.
             $pElement->setAttribute("title", dgettext('zolinga-ai', "TL;DR - A concise summary of the article"));
             $detailsElement->appendChild($pElement);
             $output->appendChild($detailsElement);
