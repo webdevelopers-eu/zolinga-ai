@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: en\n"
-"Plural-Forms: Plural-Forms: nplurals=1; plural=0;\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 
 #. TRANSLATORS: Label for the summary element; a short descriptor for the article summary.
 #: /dev/fd/52:237
