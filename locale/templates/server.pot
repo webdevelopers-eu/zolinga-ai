@@ -2,6 +2,7 @@ msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: en\n"
+"Plural-Forms: Plural-Forms: nplurals=1; plural=0;\n"
 
 #. TRANSLATORS: Error shown when an article cannot be found and generation is not allowed for the requesting IP.
 #: /dev/fd/52:72
