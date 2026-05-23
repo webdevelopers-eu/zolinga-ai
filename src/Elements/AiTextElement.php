@@ -457,7 +457,7 @@ class AiTextElement implements ListenerInterface
     {
         global $api;
 
-        $uuid = $event->request['uuid'];
+        $uuid = $event->uuid;
         $response = $event->response['data'] or throw new Exception("AI response is missing 'data' field for meta generation.");
         $article = AiTextModel::getTextModel($uuid) or throw new Exception("Article with UUID $uuid not found for meta generation.");
 
