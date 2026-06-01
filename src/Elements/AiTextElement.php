@@ -11,47 +11,47 @@ use Zolinga\System\Types\OriginEnum;
 use Zolinga\System\Types\StatusEnum;
 
 /**
-* Processes CMS generative article content. 
-* 
-* Supports two modes:
-* 1. Simple: <ai-text ai="default">Write about X.</ai-text>
-* 2. Pipeline: <ai-text ai="default"><step>Write draft.</step><qc>- No links.</qc><step>Refine: {{input}}</step></ai-text>
-*
-* In pipeline mode, <step> and <qc> elements are processed in order.
-* Each <step> generates content (subsequent steps receive previous output via {{input}}).
-* Each <qc> validates the current output against its criteria. On QC failure the pipeline retries up to 3 times.
-*
-* The variable {{random|n[|charset[|separator]]}} will be replaced with a random string of length n to increase variability and avoid duplicate content.
-*
-* Attributes:
-* - ai: Optional. The AI backend to use. Default is "default".
-* - uuid: Required. The unique identifier of the article. An exception is thrown if omitted.
-* - remove-invalid-links: Optional. If set to "true", invalid links in the generated article will be removed.
-* - allow-generate-from: Optional. Comma-separated IP/CIDR list that may trigger generation.
-*
-* @author Daniel Sevcik <sevcik@webdevelopers.eu>
-* @date 2025-02-07
-*/
+ * Processes CMS generative article content. 
+ * 
+ * Supports two modes:
+ * 1. Simple: <ai-text ai="default">Write about X.</ai-text>
+ * 2. Pipeline: <ai-text ai="default"><step>Write draft.</step><qc>- No links.</qc><step>Refine: {{input}}</step></ai-text>
+ *
+ * In pipeline mode, <step> and <qc> elements are processed in order.
+ * Each <step> generates content (subsequent steps receive previous output via {{input}}).
+ * Each <qc> validates the current output against its criteria. On QC failure the pipeline retries up to 3 times.
+ *
+ * The variable {{random|n[|charset[|separator]]}} will be replaced with a random string of length n to increase variability and avoid duplicate content.
+ *
+ * Attributes:
+ * - ai: Optional. The AI backend to use. Default is "default".
+ * - uuid: Required. The unique identifier of the article. An exception is thrown if omitted.
+ * - remove-invalid-links: Optional. If set to "true", invalid links in the generated article will be removed.
+ * - allow-generate-from: Optional. Comma-separated IP/CIDR list that may trigger generation.
+ *
+ * @author Daniel Sevcik <sevcik@webdevelopers.eu>
+ * @date 2025-02-07
+ */
 class AiTextElement implements ListenerInterface
 {
     public function __construct() {}
-    
+
     /**
-    * This method is called when the <ai-text> element is processed.
-    * See more in wiki.
-    *
-    * @param ContentElementEvent $event
-    * @return void
-    */
+     * This method is called when the <ai-text> element is processed.
+     * See more in wiki.
+     *
+     * @param ContentElementEvent $event
+     * @return void
+     */
     public function onAiTextElement(ContentElementEvent $event): void
     {
         global $api;
-        
+
         $ai = $event->input->getAttribute("ai") ?: "default";
         $allowedIps = $event->input->getAttribute("allow-generate-from") ?: null;
         $printOnly = $event->input->hasAttribute('print-only');
         $showMeta = preg_split('/[[:space:],]+/', $event->input->getAttribute("show-meta") ?? "") ?: [];
-        $uuid = $event->input->getAttribute("uuid") 
+        $uuid = $event->input->getAttribute("uuid")
             or throw new Exception("AiTextElement requires a 'uuid' attribute.");
 
         $article = AiTextModel::getTextModel($uuid);
@@ -66,10 +66,10 @@ class AiTextElement implements ListenerInterface
 
         $canGenerate = !$allowedIps || $api->network->matchCidr($_SERVER['REMOTE_ADDR'], explode(',', $allowedIps));
         $forceGenerate = isset($_GET['regenerate']);
-        
+
         if (!$canGenerate) {
             // TRANSLATORS: Error shown when an article cannot be found and generation is not allowed for the requesting IP.
-            $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not found.")." (Your IP is {$_SERVER['REMOTE_ADDR']})");
+            $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not found.") . " (Your IP is {$_SERVER['REMOTE_ADDR']})");
             $event->setStatus(ContentElementEvent::STATUS_OK, "Article $uuid not found and generation not allowed.");
             http_response_code(StatusEnum::GONE->value);
             return;
@@ -91,7 +91,8 @@ class AiTextElement implements ListenerInterface
     private function printOnlyAndRespond(ContentElementEvent $event, array $list): void
     {
         $this->print($event->output, implode("\n\n", array_map(
-            fn($item) => "==={$item['type']}===\n{$item['prompt']}", $list
+            fn($item) => "==={$item['type']}===\n{$item['prompt']}",
+            $list
         )));
         $event->setStatus(ContentElementEvent::STATUS_OK, "Print-only article rendered.");
     }
@@ -111,7 +112,7 @@ class AiTextElement implements ListenerInterface
         ], $list);
 
         return $list;
-    }        
+    }
 
     /**
      * Extract text prompt from the input element, stripping scripts.
@@ -142,7 +143,7 @@ class AiTextElement implements ListenerInterface
         // Replace {{random|n|charset}} with random string of length n from charset
         // Replace {{random|n|charset|separator}} with random string of length n from charset separated by separator
         // Example: {{random|5}} -> "XJQPW", {{random|5|abc}} -> "baccb", {{random|5|abc|-}} -> "a-c-b", {{random|5||-}} -> "A-B-C-D-E"
-        $prompt = preg_replace_callback('/{{random\|(?<matches>\d+)(?:\|(?<charset>[^}|]*)(?:\|(?<separator>[^}]*))?)?}}/u', function($matches) {
+        $prompt = preg_replace_callback('/{{random\|(?<matches>\d+)(?:\|(?<charset>[^}|]*)(?:\|(?<separator>[^}]*))?)?}}/u', function ($matches) {
             $length = (int)$matches['matches'];
             $characters = $matches['charset'] ?? '' ?: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
             $separator = $matches['separator'] ?? '';
@@ -171,14 +172,14 @@ class AiTextElement implements ListenerInterface
             $this->renderPlaceholder($event->output, $placeholder);
         } else {
             // TRANSLATORS: Message shown when an article exists but is not yet published; suggests retrying later.
-            $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not published yet. Try again later.")." (UUID: $uuid)");
+            $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not published yet. Try again later.") . " (UUID: $uuid)");
         }
         $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
         $generateMetaAI = !empty($event->input->getAttribute('show-meta')) ? ($event->input->getAttribute('ai-meta') ?: 'default') : null;
         $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks, $event->input->getAttribute("tag") ?: null, $generateMetaAI);
         $event->setStatus(ContentElementEvent::STATUS_OK, "The article was not published yet. Try again later.");
         header("Retry-After: 86400");
-        http_response_code(StatusEnum::SERVICE_UNAVAILABLE->value);                
+        http_response_code(StatusEnum::SERVICE_UNAVAILABLE->value);
     }
 
     private function print(\DOMDocumentFragment $frag, string $text): void
@@ -203,7 +204,7 @@ class AiTextElement implements ListenerInterface
         if (in_array("title", $showMeta)) {
             $meta = $output->ownerDocument->createElement("meta");
             $meta->setAttribute("name", "title");
-            $meta->setAttribute("content", $article->title);    
+            $meta->setAttribute("content", $article->title);
             $meta->setAttribute("append-to", "xpath://head");
             $output->appendChild($meta);
         }
@@ -212,7 +213,7 @@ class AiTextElement implements ListenerInterface
         if (in_array("description", $showMeta)) {
             $meta = $output->ownerDocument->createElement("meta");
             $meta->setAttribute("name", "description");
-            $meta->setAttribute("content", $article->description);    
+            $meta->setAttribute("content", $article->description);
             $meta->setAttribute("append-to", "xpath://head");
             $output->appendChild($meta);
         }
@@ -227,7 +228,7 @@ class AiTextElement implements ListenerInterface
         //     "itemprop" => "abstract",
         //     "title" => dgettext('zolinga-autoblog', "TL;DR - A concise summary of the article") 
         // ], $article->tldr);
-        if (in_array("tldr", $showMeta)) {        
+        if (in_array("tldr", $showMeta)) {
             $detailsElement = $output->ownerDocument->createElement("details");
             $detailsElement->setAttribute("class", "text-tldr");
             $detailsElement->setAttribute("open", "open");
@@ -250,7 +251,7 @@ class AiTextElement implements ListenerInterface
         global $api;
 
         $doc = new \DOMDocument();
-        if (!@$doc->loadXML($article->contents)) { 
+        if (!@$doc->loadXML($article->contents)) {
             $api->log->error("ai", "Failed to parse article content as XML: " . libxml_get_last_error()->message);
         }
         $body = $doc->getElementsByTagName('article')->item(0);
@@ -280,7 +281,7 @@ class AiTextElement implements ListenerInterface
         $body->setAttribute("data-text-id", $article->id);
         $frag->appendChild($frag->ownerDocument->importNode($body, true));
     }
-    
+
     private function displayError(\DOMDocumentFragment $frag, string $message): void
     {
         $errorMsgElement = $frag->ownerDocument->createElement("article");
@@ -289,7 +290,7 @@ class AiTextElement implements ListenerInterface
         $errorMsgElement->setAttribute("class", "zolinga-text warning");
         $errorMsgElement->appendChild(new \DOMText(dgettext("zolinga-ai", $message)));
     }
-    
+
     /**
      * Extract the optional <placeholder> subelement from <ai-text>.
      *
@@ -323,26 +324,26 @@ class AiTextElement implements ListenerInterface
     }
 
     /**
-    * Query the AI model to generate the article.
-    * 
-    * The request will be queued and after processing the response will be dispatched as an event
-    * and processed by the $this->onGenerateArticle() method.
-    *
-    * @param string $uuid The unique identifier of the article.
-    * @param string $ai The backend to use.
-    * @param array $list The list of steps and QC checks to process. Each item has 'prompt' and 'type' keys.
-    * @param bool $removeInvalidLinks Whether to validate links in the article. If invalid link is found, it will be removed.
-    * @param string|null $tag An optional tag to associate with the article. Can be used for categorization or later retrieval. Will be stored in DB column 'tag'.
-    * @return void
-    */
+     * Query the AI model to generate the article.
+     * 
+     * The request will be queued and after processing the response will be dispatched as an event
+     * and processed by the $this->onGenerateArticle() method.
+     *
+     * @param string $uuid The unique identifier of the article.
+     * @param string $ai The backend to use.
+     * @param array $list The list of steps and QC checks to process. Each item has 'prompt' and 'type' keys.
+     * @param bool $removeInvalidLinks Whether to validate links in the article. If invalid link is found, it will be removed.
+     * @param string|null $tag An optional tag to associate with the article. Can be used for categorization or later retrieval. Will be stored in DB column 'tag'.
+     * @return void
+     */
     private function generateArticle(string $uuid, string $ai, array $list, bool $removeInvalidLinks = false, ?string $tag = null, ?string $generateMetaAI = null): void
     {
         global $api;
-        
+
         if ($api->ai->isPromptAsyncQueued($uuid) && !isset($_GET['regenerate'])) {
             return;
         }
-        
+
         $event = new AiEvent(
             $uuid,
             "ai:article:generated",
@@ -365,7 +366,7 @@ class AiTextElement implements ListenerInterface
                 'generateMetaAI' => $generateMetaAI,
             ],
         );
-        
+
         $api->ai->promptAsync($event);
     }
 
@@ -411,17 +412,17 @@ class AiTextElement implements ListenerInterface
 
         $api->ai->promptAsync($event);
     }
-    
+
     /**
-    * This method is called when the AI model generates the article.
-    * 
-    * The response is processed and HTML-formatted article is saved to the database.
-    * 
-    * The expectation is that the input is in Markdown format.
-    *
-    * @param AiEvent $event
-    * @return void
-    */
+     * This method is called when the AI model generates the article.
+     * 
+     * The response is processed and HTML-formatted article is saved to the database.
+     * 
+     * The expectation is that the input is in Markdown format.
+     *
+     * @param AiEvent $event
+     * @return void
+     */
     public function onGenerateArticle(AiEvent $event): void
     {
         global $api;
@@ -442,7 +443,7 @@ class AiTextElement implements ListenerInterface
             $api->log->info("ai", "Triggering meta generation for article $uuid");
             $this->generateMeta($generateMetaAI, $article);
         }
-        
+
         $event->setStatus(AiEvent::STATUS_OK, "Article saved.");
     }
 
