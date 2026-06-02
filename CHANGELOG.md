@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-06-02
+
+### Changed
+- AI backends are now configured as a **list** of objects with a `capabilities` array, selected by capability (with `fnmatch`-style wildcards) instead of by backend name. The default location is `config/zolinga-ai/ai-backends.json`. The legacy map-of-named-backends layout is no longer supported.
+- `AiBackend` is no longer constructed with a name; its identity is derived from `<model>@<host>`. `capabilities` is required and any backend missing it fails to load.
+- `$api->ai->prompt()` and `$api->ai->promptAsync()` now accept a string or array of required capabilities (or an `AiBackend` instance) and pick the most specific matching backend.
+- `replace` rules are applied only to plain-text output; JSON-schema responses are no longer post-processed.
+- `options` are no longer inherited from a `default` backend at the config level — each backend carries its own.
+
+### Added
+- `Zolinga\AI\Types\AiBackendReplace` value object encapsulating a single post-processing rule, with optional `description` for human-readable notes.
+- `concurrency` per backend, implemented via the registry lock service, allowing multiple in-flight requests to the same URL.
+- `systemPrompt` override per backend, falling back to the global `config.ai.systemPrompt`.
+
 ## [1.5] - 2026-04-29
 
 ### Added

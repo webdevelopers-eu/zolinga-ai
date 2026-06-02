@@ -28,6 +28,7 @@ use Zolinga\AI\Enum\AiTypeEnum;
 class AiBackend
 {
     public readonly string $name;
+    public readonly array $capabilities;
     public readonly AiTypeEnum $type;
     public readonly string $url;
     public readonly string $model;
@@ -41,37 +42,60 @@ class AiBackend
     /** @var array<string, string> Shared across all AiBackend instances: url => lockId */
     private static array $locks = [];
 
-    public function __construct(string $name)
+    public function __construct(array $config)
     {
-        global $api;
+        $this->name = $config['model'] . '@' . parse_url($config['url'], PHP_URL_HOST);
 
-        $this->name = $name;
-
-        if (!is_array($api->config['ai']['backends'][$name] ?? null)) {
-            throw new \Exception("Unknown AI backend: $name, check that the configuration key .ai.backends.$name exists in your Zolinga configuration.", 1222);
-        }
-
-        $config = array_merge(
-            ['type' => 'ollama', 'model' => 'llama3.2:1b', 'concurrency' => 1],
-            $api->config['ai']['backends']['default'] ?? [],
-            $api->config['ai']['backends'][$name]
-        );
-
-        $this->type = $config['type'] instanceof AiTypeEnum
-            ? $config['type']
-            : AiTypeEnum::from($config['type']);
-        $this->url = $config['url'];
-        $this->model = $config['model'];
+        $this->type = AiTypeEnum::from($config['type'] ?? AiTypeEnum::OLLAMA);
+        $this->url = $config['url']
+            or throw new \Exception("AI backend '{$this->name}' is missing required 'url' configuration.", 1230);
+        $this->model = $config['model']
+            or throw new \Exception("AI backend '{$this->name}' is missing required 'model' configuration.", 1231);
         $this->systemPrompt = is_string($config['systemPrompt'] ?? null) ? $config['systemPrompt'] : null;
         $this->think = isset($config['think']) ? (bool) $config['think'] : null;
         $this->options = is_array($config['options'] ?? null) ? $config['options'] : null;
         $this->concurrency = max(1, (int) ($config['concurrency'] ?? 1));
+
+        $this->capabilities = $config['capabilities']
+            or throw new \Exception("AI backend '{$this->name}' is missing required 'capabilities' configuration.", 1232);
 
         $replaceRaw = $config['replace'] ?? [];
         $this->replace = array_map(
             fn(array $r) => new AiBackendReplace($r),
             is_array($replaceRaw) ? $replaceRaw : []
         );
+    }
+
+    /**
+     * Check if this backend matches the given capability or capabilities.
+     * 
+     * Capabilities can be exact strings or patterns with wildcards (*). A backend matches if for every required capability,
+     * 
+     * Example:
+     * 
+     * // $backend->capabilities = ['default', 'search:*', 'translate:en-*'];
+     * $backend->hasCapabilities(['translate:en-cs', 'search:images']) => true
+     * $backend->hasCapabilities(['default', 'voice']) => false (missing 'voice')
+     *
+     * @param string|array $capabilities
+     * @return false|int - false: no match, int: higher number means more specific match (more non-wildcard characters matched)
+     */
+    public function hasCapabilities(string|array $capabilities):  false|int
+    {
+        $required = is_string($capabilities) ? [$capabilities] : $capabilities;
+        $score = 0;
+
+        foreach ($required as $cap) {
+            foreach ($this->capabilities as $have) {
+                if (fnmatch($cap, $have) || fnmatch($have, $cap)) {
+                    $nonWildcard = preg_replace('/[*?]|\[[^\]]*\]/', '', $have . $cap);
+                    $score += strlen($nonWildcard); // more non-wildcard chars = more specific match
+                    continue 2; // this required capability is satisfied, check next
+                }
+            }
+            return false; // this required capability is not satisfied
+        }
+        return $score; // all required capabilities are satisfied
     }
 
     public function __toString(): string

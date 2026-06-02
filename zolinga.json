@@ -1,6 +1,6 @@
 {
   "name": "Zolinga AI",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "AI power tools and services.",
   "authors": [
     "Daniel Sevcik <danny@zolinga.net>"
@@ -87,19 +87,7 @@
   "config": {
     "ai": {
       "log": false,
-      "systemPrompt": "You are an exceptionally talented copywriter.",
-      "backends": {
-        "default": {
-          "type": "ollama",
-          "url": "http://login:password@127.0.0.1:3000/api",
-          "model": "llama3.2:1b",
-          "replace": [{"search": "/^.*?<\\/think>\\s*/s", "replace": ""}],
-          "systemPrompt": false,
-          "think": false,
-          "options": [],
-          "concurrency": 1
-        }
-      }
+      "systemPrompt": "You are an exceptionally talented copywriter."
     }
   }
 }

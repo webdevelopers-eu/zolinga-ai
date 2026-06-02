@@ -20,19 +20,79 @@ use Zolinga\System\Events\ServiceInterface;
 */
 class AiService implements ServiceInterface
 {
+    /**
+     * List of available backends
+     *
+     * @var array<AiBackend>
+     */
+    private array $aiBackends {
+        get {
+            if (!isset($this->aiBackends)) {
+                $this->aiBackends = $this->loadAiBackends();
+            }
+            return $this->aiBackends;
+        }
+    }
+
     public function __construct()
     {
     }
 
+    private function loadAiBackends(): array
+    {
+        global $api;
+
+        $aiBackends = [];
+        $config = 'config://zolinga-ai/ai-backends.json';
+
+        if (!file_exists($config)) {
+            $api->log->warning('ai', "AI backends configuration file '$config' does not exist. No AI backends will be available. Please create the file with your backend configurations. See the documentation for details.");
+            return $aiBackends;
+        }
+
+        $config = json_decode(file_get_contents($config), true) 
+            or throw new \Exception("Failed to decode AI backends configuration file '$config': " . json_last_error_msg(), 1223);
+
+        foreach ($config as $aiConfig) {
+            try {
+                $aiBackends[] = new AiBackend($aiConfig);
+            } catch (\Exception $e) {
+                $api->log->error('ai', "Failed to initialize AI backend '{$aiConfig['model']}': " . $e->getMessage());
+            }
+        }
+        return $aiBackends;
+    }
+
     /**
      * Resolve backend parameter to AiBackend object.
+     * 
+     * If more then one backend matches the provided capabilities, the one with the highest match score
+     * (less wildcards in capability name) is selected. If no backend matches, null is returned.
      *
-     * @param AiBackend|string $ai
-     * @return AiBackend
+     * @param string|array $capabilities
+     * @return AiBackend|null
      */
-    private function getBackendObject(AiBackend|string $ai): AiBackend
+    private function selectBackendAI(string|array $capabilities): ?AiBackend
     {
-        return $ai instanceof AiBackend ? $ai : new AiBackend($ai);
+        global $api;
+
+        $matches = [];
+        foreach($this->aiBackends as $backend) {
+            $score = $backend->hasCapabilities($capabilities);
+            if (is_int($score)) {
+                return $matches[$score] = $backend;
+            }
+        }
+
+        if (!empty($matches)) {
+            krsort($matches, SORT_NUMERIC);
+            $ai = reset($matches);
+            $api->log->info('ai', "Selected AI backend '$ai->name' for capabilities: " . (is_array($capabilities) ? implode(", ", $capabilities) : $capabilities));
+            return $ai;
+        }
+
+        $api->log->error('ai', "No AI backend matches the required capabilities: " . (is_array($capabilities) ? implode(", ", $capabilities) : $capabilities));
+        return null;
     }
     
     /**
@@ -132,7 +192,7 @@ public function isPromptAsyncQueued(string $uuid): bool
 *     ]
 * );
 *
-* @param AiBackend|string $ai The backend to use as defined in the configuration.
+* @param AiBackend|string|array $ai The backend to use as defined in the configuration.
 * @param string $prompt The prompt to send.
 * @param array|null $format Expected output format specified as JSON schema or "json" or null. See Oolama API documentation.
 * @param array|null $options Optional request options. They are merged with the configured backend's `options` array if present. Matching keys from the backend configuration currently take precedence. E.g. "{num_ctx: 4096}". See Ollama options.
@@ -140,10 +200,10 @@ public function isPromptAsyncQueued(string $uuid): bool
 * @param bool $debug If true, enables debug logging for the generation process.
 * @return array|string The response from the AI model - if the $format is set to "json" or JSON schema, the response is decoded array, otherwise it is a string.
 */
-public function prompt(AiBackend|string $ai, string $prompt, ?array $format = null, ?array $options = null, int $retry = 6, bool $debug = false): array|string
+public function prompt(AiBackend|string|array $ai, string $prompt, ?array $format = null, ?array $options = null, int $retry = 6, bool $debug = false): array|string
 {
     global $api;
-    $ai = $this->getBackendObject($ai);
+    $ai = $ai instanceof AiBackend ? $ai : $this->selectBackendAI($ai);
 
     while ($retry-- > 0) {
         try {
