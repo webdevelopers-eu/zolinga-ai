@@ -65,12 +65,12 @@ You can run several backends behind different capability sets. The first one who
         "type": "ollama",
         "url": "https://user:pass@cloud.example.com/api",
         "model": "qwen3.5:cloud",
-        "capabilities": ["translator"]
+        "capabilities": ["translate:*"]
     }
 ]
 ```
 
-`$api->ai->prompt('default', ...)` picks the gemma3 backend. `$api->ai->prompt('translator', ...)` picks the qwen backend.
+`$api->ai->prompt('default', ...)` picks the gemma3 backend. `$api->ai->prompt(['translate:en-cs', 'oxford-dictionary'], ...)` matches a backend whose `capabilities` cover both — for example one that declares `["translate:en-*"]` (or `["translate:en-cs"]` specifically, which would score higher).
 
 > **Tip:** A capability of `"*"` matches anything. Use it sparingly, and prefer a more specific tag like `default` so the matcher still has meaningful scoring.
 
@@ -170,13 +170,13 @@ A production-shaped configuration with two backends, one for general content wor
         "type": "ollama",
         "url": "https://user:pass@ai.example.com/api",
         "model": "qwen3.5:cloud",
-        "capabilities": ["translator"],
+        "capabilities": ["translate:*"],
         "concurrency": 4
     }
 ]
 ```
 
-The first backend serves anything in the `default` / `search:*` / `article-*` / `vyhledavani` / `workflow` family and gets post-processed to clean up model quirks. The second backend is dedicated to translation jobs and is allowed up to 4 concurrent in-flight requests.
+The first backend serves anything in the `default` / `search:*` / `article-*` / `vyhledavani` / `workflow` family and gets post-processed to clean up model quirks. The second backend is dedicated to translation jobs (matched by capabilities like `translate:en-cs` or `translate:*`) and is allowed up to 4 concurrent in-flight requests.
 
 ## Programmatic Backend Access
 
