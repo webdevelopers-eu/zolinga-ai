@@ -20,6 +20,8 @@ use Zolinga\System\Events\ServiceInterface;
 */
 class AiService implements ServiceInterface
 {
+    private array $selectionCache = []; // cache for backend selection results
+
     /**
      * List of available backends
      *
@@ -76,23 +78,37 @@ class AiService implements ServiceInterface
     {
         global $api;
 
-        $matches = [];
+        $id = $this->capabilityToString($capabilities);
+        if (isset($this->selectionCache[$id])) {
+            return $this->selectionCache[$id];
+        }
+
+        $selected = null;
+        $lastScore = -1;
         foreach($this->aiBackends as $backend) {
             $score = $backend->hasCapabilities($capabilities);
-            if (is_int($score)) {
-                return $matches[$score] = $backend;
+            if (is_int($score) && $score > $lastScore) {
+                $selected = $backend;
+                $lastScore = $score;
             }
         }
 
-        if (!empty($matches)) {
-            krsort($matches, SORT_NUMERIC);
-            $ai = reset($matches);
-            $api->log->info('ai', "Selected AI backend '$ai->name' for capabilities: " . (is_array($capabilities) ? implode(", ", $capabilities) : $capabilities));
-            return $ai;
+        $this->selectionCache[$id] = $selected;
+
+        if (!$selected) {
+            $api->log->warning('ai', "📌 No AI backend matches the required capabilities: " . (is_array($capabilities) ? implode(", ", $capabilities) : $capabilities));
+            return null;
         }
 
-        $api->log->error('ai', "No AI backend matches the required capabilities: " . (is_array($capabilities) ? implode(", ", $capabilities) : $capabilities));
-        return null;
+        $api->log->info('ai', "📌 Selected AI backend '$selected->name' for capabilities: " . (is_array($capabilities) ? implode(", ", $capabilities) : $capabilities));
+        return $selected;
+    }
+
+    private function capabilityToString(string|array $capabilities): string
+    {
+        $arr = is_array($capabilities) ? $capabilities : [$capabilities];
+        sort($arr);
+        return implode(",", $arr);
     }
     
     /**
@@ -368,7 +384,7 @@ private function httpRequest(string $url, array $request, string $model, bool $d
         or throw new \Exception("Failed to encode the request to JSON: " . json_last_error_msg(), 1220);
     
     $timer = microtime(true);
-    $api->log->info('ai', "Asking $model ".($request['think'] ? "(thinking) " : "")."at $urlSafe (".number_format(strlen($raw))." bytes), options " . json_encode($request['options'] ?? []));
+    $api->log->info('ai', "Asking $model ".($request['think'] ?? false ? "(thinking) " : "")."at $urlSafe (".number_format(strlen($raw))." bytes), options " . json_encode($request['options'] ?? []));
     $prevSocketTimeout = ini_get('default_socket_timeout');
     ini_set('default_socket_timeout', 28800);
     $response = file_get_contents($url, false, stream_context_create([

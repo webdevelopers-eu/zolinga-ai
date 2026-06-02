@@ -86,14 +86,17 @@ class AiBackend
         $score = 0;
 
         foreach ($required as $cap) {
+            $bestScore = 0;
             foreach ($this->capabilities as $have) {
                 if (fnmatch($cap, $have) || fnmatch($have, $cap)) {
                     $nonWildcard = preg_replace('/[*?]|\[[^\]]*\]/', '', $have . $cap);
-                    $score += strlen($nonWildcard); // more non-wildcard chars = more specific match
-                    continue 2; // this required capability is satisfied, check next
+                    $bestScore = max($bestScore, strlen($nonWildcard)); // more non-wildcard chars = more specific match
                 }
             }
-            return false; // this required capability is not satisfied
+            if ($bestScore === 0) {
+                return false; // this required capability is not satisfied
+            }
+            $score += $bestScore;
         }
         return $score; // all required capabilities are satisfied
     }
