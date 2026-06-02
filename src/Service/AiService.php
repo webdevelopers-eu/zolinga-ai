@@ -96,11 +96,11 @@ class AiService implements ServiceInterface
         $this->selectionCache[$id] = $selected;
 
         if (!$selected) {
-            $api->log->warning('ai', "📌 No AI backend matches the required capabilities: " . (is_array($capabilities) ? implode(", ", $capabilities) : $capabilities) . " (specificity: $lastScore)");
+            $api->log->warning('ai', "📌 No AI backend matches the required capabilities: $id (specificity: $lastScore)");
             return null;
         }
 
-        $api->log->info('ai', "📌 Selected AI backend '$selected->name' for capabilities: " . (is_array($capabilities) ? implode(", ", $capabilities) : $capabilities) . " (specificity: $lastScore)");
+        $api->log->info('ai', "📌 Selected AI backend '$selected->name' for capabilities: $id (specificity: $lastScore)");
         return $selected;
     }
 
@@ -108,7 +108,7 @@ class AiService implements ServiceInterface
     {
         $arr = is_array($capabilities) ? $capabilities : [$capabilities];
         sort($arr);
-        return implode(",", $arr);
+        return implode(" + ", $arr);
     }
     
     /**
