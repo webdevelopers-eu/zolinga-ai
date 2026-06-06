@@ -118,10 +118,6 @@ class AiEvent extends RequestResponseEvent {
             throw new \Exception("Priority must be a float between 0 and 1 (exclusive), got '{$priority}'.");
         }
 
-        if (!is_array($api->config['ai']['backends'][$request['ai']])) {
-            throw new \Exception("AI backend '{$request['ai']}' not found in configuration key '.config.ai.backends.{$request['ai']}'.");
-        }
-
         // Check there are no unknown keys in the request that might indicate a typo or misunderstanding of the API.
         $allowedKeys = array_merge(array_keys(self::REQUEST_DEFAULTS), self::REQUEST_REQUIRED);
         foreach ($request as $key => $value) {
