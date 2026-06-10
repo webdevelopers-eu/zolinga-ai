@@ -194,7 +194,7 @@ class AiTextElement implements ListenerInterface
     {
         // Generate 
         if (!$article->title || !$article->description || !$article->tldr) {
-            // Not all AI models support structured output, so we need sseparate attr to specify that.
+            // Not all AI models support structured output, so we need separate attr to specify that.
             $this->generateMeta($input->getAttribute('ai-meta') ?: 'default', $article);
             $output->append($output->ownerDocument->createComment("Meta data are not available at the moment. Try again later."));
             return;
@@ -450,6 +450,8 @@ class AiTextElement implements ListenerInterface
 
     /**
      * Update meta data.
+     * 
+     * Event "ai:meta:generated" to update article meta data on new articles.
      *
      * @param AiEvent $event
      * @return void
@@ -459,12 +461,17 @@ class AiTextElement implements ListenerInterface
         global $api;
 
         $uuid = $event->uuid;
-        $response = $event->response['data'] or throw new Exception("AI response is missing 'data' field for meta generation.");
-        $article = AiTextModel::getTextModel($uuid) or throw new Exception("Article with UUID $uuid not found for meta generation.");
+        $response = $event->response['data'] 
+            or throw new Exception("AI response is missing 'data' field for meta generation.");
+        $article = AiTextModel::getTextModel($uuid) 
+            or throw new Exception("Article with UUID $uuid not found for meta generation.");
 
-        $article->title = $response['title'] or throw new Exception("Title is required in meta generation response.");
-        $article->description = $response['description'] or throw new Exception("Description is required in meta generation response.");
-        $article->tldr = $response['tldr'] or throw new Exception("TL;DR is required in meta generation response.");
+        $article->title = $response['title'] 
+            or throw new Exception("Title is required in meta generation response.");
+        $article->description = $response['description'] 
+            or throw new Exception("Description is required in meta generation response.");
+        $article->tldr = $response['tldr'] 
+            or throw new Exception("TL;DR is required in meta generation response.");
 
         $api->log->info("ai", "Meta generated for article $uuid: title='{$article->title}'");
         $article->save();

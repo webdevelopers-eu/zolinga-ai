@@ -90,12 +90,11 @@ class AiEvent extends RequestResponseEvent {
     ) {
         global $api;
 
-        $this->uuid = $uuid;
-        
         $request = array_merge(self::REQUEST_DEFAULTS, (array) $request);
         $this->validateRequest($request);
-
         parent::__construct($type, $origin, $request, $response);
+
+        $this->uuid = $uuid;
     }
 
     // In future the validation should be offloaded to a separate per-backend classes
