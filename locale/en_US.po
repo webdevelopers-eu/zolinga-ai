@@ -10,26 +10,21 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #. TRANSLATORS: Label for the summary element; a short descriptor for the article summary.
-#: /dev/fd/52:237
 msgid "Summary"
 msgstr "Summary"
 
 #. TRANSLATORS: Short label for a condensed summary view (TL;DR).
-#: /dev/fd/52:235
 msgid "TL;DR"
 msgstr "TL;DR"
 
 #. TRANSLATORS: Title attribute for the TL;DR paragraph; explains that this is a concise article summary.
-#: /dev/fd/52:242
 msgid "TL;DR - A concise summary of the article"
 msgstr "TL;DR - A concise summary of the article"
 
 #. TRANSLATORS: Error shown when an article cannot be found and generation is not allowed for the requesting IP.
-#: /dev/fd/52:72
 msgid "The article was not found."
 msgstr "The article was not found."
 
 #. TRANSLATORS: Message shown when an article exists but is not yet published; suggests retrying later.
-#: /dev/fd/52:174
 msgid "The article was not published yet. Try again later."
 msgstr "The article was not published yet. Try again later."

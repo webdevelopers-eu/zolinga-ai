@@ -10,26 +10,21 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. TRANSLATORS: Label for the summary element; a short descriptor for the article summary.
-#: /dev/fd/52:237
 msgid "Summary"
 msgstr "요약"
 
 #. TRANSLATORS: Short label for a condensed summary view (TL;DR).
-#: /dev/fd/52:235
 msgid "TL;DR"
 msgstr "요약"
 
 #. TRANSLATORS: Title attribute for the TL;DR paragraph; explains that this is a concise article summary.
-#: /dev/fd/52:242
 msgid "TL;DR - A concise summary of the article"
 msgstr "TL;DR - 기사 요약"
 
 #. TRANSLATORS: Error shown when an article cannot be found and generation is not allowed for the requesting IP.
-#: /dev/fd/52:72
 msgid "The article was not found."
 msgstr "기사를 찾을 수 없습니다."
 
 #. TRANSLATORS: Message shown when an article exists but is not yet published; suggests retrying later.
-#: /dev/fd/52:174
 msgid "The article was not published yet. Try again later."
 msgstr "기사가 아직 게시되지 않았습니다. 나중에 다시 시도해 주세요."
