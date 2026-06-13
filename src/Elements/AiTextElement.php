@@ -279,6 +279,12 @@ class AiTextElement implements ListenerInterface
 
         $body->setAttribute('data-tag', $article->tag);
         $body->setAttribute("data-text-id", $article->id);
+
+        // Add @lang attribute to all elements, we support default one
+        // @todo when we go multilingual, we should store the language of the generated article in the DB and use it here instead of the current locale
+        $lang = $api->locale->primaryLang;
+        $body->setAttribute("lang", $lang);
+
         $frag->appendChild($frag->ownerDocument->importNode($body, true));
     }
 
