@@ -1,4 +1,4 @@
-CREATE TABLE `aiEvents` (
+CREATE TABLE IF NOT EXISTS `aiEvents` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `created` int(10) unsigned NOT NULL,
   `uuid` varchar(128) DEFAULT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE `aiEvents` (
   KEY `idx_status_priority` (`status`, `priority` DESC, `id` DESC)
 ) ENGINE=InnoDB AUTO_INCREMENT=919 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE `aiTexts` (
+CREATE TABLE IF NOT EXISTS `aiTexts` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `uuid` varchar(128) NOT NULL,
   `uuidHash` binary(20) NOT NULL,
