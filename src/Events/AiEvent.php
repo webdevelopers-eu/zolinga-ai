@@ -65,10 +65,10 @@ class AiEvent extends RequestResponseEvent {
         'format' => null,
         'priority' => 0.5,
         'options' => [],
+        'tag' => null,
     ];
 
     private const REQUEST_REQUIRED = [
-        'capabilities',
         'prompt',
     ];
 
@@ -124,7 +124,7 @@ class AiEvent extends RequestResponseEvent {
         }
 
         // Check there are no unknown keys in the request that might indicate a typo or misunderstanding of the API.
-        $allowedKeys = array_merge(array_keys(self::REQUEST_DEFAULTS), self::REQUEST_REQUIRED);
+        $allowedKeys = array_unique(array_merge(array_keys(self::REQUEST_DEFAULTS), self::REQUEST_REQUIRED));
         foreach ($request as $key => $value) {
             if (!in_array($key, $allowedKeys)) {
                 $api->log->warning('ai', "Unknown parameter '$key' in AiEvent request. Allowed keys are: " . implode(', ', $allowedKeys) . ". This parameter will be preserved in the request and available in your callback, but double-check for typos or misunderstandings of the API.");
