@@ -14,7 +14,7 @@ The event carries the AI generation result:
 
 | Property | Type | Description |
 |---|---|---|
-| `ai` | `string` | AI backend name used for metadata generation |
+| `capabilities` | `string` | Capability used for metadata generation |
 | `uuid` | `string` | Unique identifier for the article whose metadata was generated |
 | `prompt` | `string` | The meta-prompt used for generation (from `data/meta-prompt.txt`) |
 | `format` | `object` | JSON schema object requesting structured output with `title`, `description`, and `tldr` properties |

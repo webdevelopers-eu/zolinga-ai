@@ -2,48 +2,51 @@
 
 declare(strict_types=1);
 
-namespace Zolinga\AI\Types;
+namespace Zolinga\AI\Config\Backends;
 
+use Zolinga\AI\Config\AbstractConfigItem;
 use Zolinga\AI\Enum\AiTypeEnum;
 
 /**
  * Represents a configured AI backend with all its options.
  *
  * Usage:
- *   $backend = new AiBackend('default');
- *   echo $backend; // "🤖default"
+ *   $backend = new AiBackendConfig(['url' => '...', 'model' => '...', 'capabilities' => ['default']]);
+ *   echo $backend; // "🤖model@host"
  *   $backend->acquireLock();
  *   // ... do work ...
  *   $backend->releaseLock();
  *
- * @property-read string $name The backend config name (e.g. "default", "vyhledavani").
+ * @property-read string $name The backend identity (model@host).
  * @property-read AiTypeEnum $type Backend type.
  * @property-read string $url API URL.
  * @property-read string $model Model identifier.
- * @property-read AiBackendReplace[] $replace Response post-processing replacements.
- * @property-read ?string $systemPrompt System prompt override or null/false.
+ * @property-read AiBackendReplaceConfig[] $replace Response post-processing replacements.
+ * @property-read ?string $systemPrompt System prompt override or null.
  * @property-read ?bool $think Whether to enable thinking mode.
+ * @property-read ?array $options Extra Ollama API options.
  * @property-read int $concurrency Max concurrent requests to this backend URL.
  */
-class AiBackend
+class AiBackendConfig extends AbstractConfigItem
 {
     public readonly string $name;
-    public readonly array $capabilities;
     public readonly AiTypeEnum $type;
     public readonly string $url;
     public readonly string $model;
-    /** @var AiBackendReplace[] */
+    /** @var AiBackendReplaceConfig[] */
     public readonly array $replace;
     public readonly ?string $systemPrompt;
     public readonly ?bool $think;
     public readonly ?array $options;
     public readonly int $concurrency;
 
-    /** @var array<string, string> Shared across all AiBackend instances: url => lockId */
+    /** @var array<string, string> Shared across all AiBackendConfig instances: url => lockId */
     private static array $locks = [];
 
     public function __construct(array $config)
     {
+        parent::__construct($config);
+
         $this->name = $config['model'] . '@' . parse_url($config['url'], PHP_URL_HOST);
 
         $this->type = AiTypeEnum::from($config['type'] ?? AiTypeEnum::OLLAMA);
@@ -56,49 +59,11 @@ class AiBackend
         $this->options = is_array($config['options'] ?? null) ? $config['options'] : null;
         $this->concurrency = max(1, (int) ($config['concurrency'] ?? 1));
 
-        $this->capabilities = $config['capabilities']
-            or throw new \Exception("AI backend '{$this->name}' is missing required 'capabilities' configuration.", 1232);
-
         $replaceRaw = $config['replace'] ?? [];
         $this->replace = array_map(
-            fn(array $r) => new AiBackendReplace($r),
+            fn(array $r) => new AiBackendReplaceConfig($r),
             is_array($replaceRaw) ? $replaceRaw : []
         );
-    }
-
-    /**
-     * Check if this backend matches the given capability or capabilities.
-     * 
-     * Capabilities can be exact strings or patterns with wildcards (*). A backend matches if for every required capability,
-     * 
-     * Example:
-     * 
-     * // $backend->capabilities = ['default', 'search:*', 'translate:en-*'];
-     * $backend->hasCapabilities(['translate:en-cs', 'search:images']) => true
-     * $backend->hasCapabilities(['default', 'voice']) => false (missing 'voice')
-     *
-     * @param string|array $capabilities
-     * @return false|int - false: no match, int: higher number means more specific match (more non-wildcard characters matched)
-     */
-    public function hasCapabilities(string|array $capabilities):  false|int
-    {
-        $required = is_string($capabilities) ? [$capabilities] : $capabilities;
-        $score = 0;
-
-        foreach ($required as $cap) {
-            $bestScore = 0;
-            foreach ($this->capabilities as $have) {
-                if (fnmatch($cap, $have) || fnmatch($have, $cap)) {
-                    $nonWildcard = preg_replace('/[*?]|\[[^\]]*\]/', '', $have . $cap);
-                    $bestScore = max($bestScore, strlen($nonWildcard)); // more non-wildcard chars = more specific match
-                }
-            }
-            if ($bestScore === 0) {
-                return false; // this required capability is not satisfied
-            }
-            $score += $bestScore;
-        }
-        return $score; // all required capabilities are satisfied
     }
 
     public function __toString(): string
@@ -118,6 +83,7 @@ class AiBackend
 
     /**
      * Acquire a concurrency lock for this backend's URL.
+     *
      * Cycles through slots 0..concurrency-1 every second,
      * logging a message every 60 seconds.
      *
@@ -143,22 +109,18 @@ class AiBackend
                 $result = $api->registry->acquireLock($lockId, 0);
                 if ($result !== false) {
                     self::$locks[$serverId] = $lockId;
-                    // $api->log->info('ai', "$this acquired concurrency slot #$slot (concurrency {$this->concurrency}) on $serverId");
                     return true;
                 }
             }
 
-            // timeout=0: no wait, fail immediately
             if ($timeout === 0) {
                 return false;
             }
 
-            // Timed out?
             if ($deadline !== null && time() >= $deadline) {
                 return false;
             }
 
-            // All slots busy — log every 60s, sleep 1s
             $now = time();
             if ($now - $lastLog >= 60) {
                 $api->log->info('ai', "$this waiting for a free concurrency slot on $serverId ({$this->concurrency} slots busy)...");
@@ -201,6 +163,5 @@ class AiBackend
         $lockId = self::$locks[$serverId];
         $api->registry->releaseLock($lockId);
         unset(self::$locks[$serverId]);
-        // $api->log->info('ai', "$this released concurrency lock on $serverId");
     }
 }

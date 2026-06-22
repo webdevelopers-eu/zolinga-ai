@@ -122,7 +122,7 @@ class AiGenerator implements ListenerInterface
     {
         global $api;
 
-        $row = $api->db->query("SELECT * FROM aiEvents WHERE id = ?", $id)->fetchAssoc();
+        $row = $api->db->query("SELECT * FROM aiEvents WHERE id = ?", $id)->fetchAssoc();        
         $eventData = json_decode($row['aiEvent'], true);
         $event = AiEvent::fromArray($eventData);
         $retriesLeft = 3;
@@ -163,7 +163,7 @@ class AiGenerator implements ListenerInterface
     {
         global $api;
 
-        $ai = $event->request['ai']; // for now always 'ollama'
+        $ai = $event->request['capabilities'] ?? $event->request['ai'] ?? 'default'; // fallback 'ai' for old queued events
 
         $promptList = $event->request['prompt'];
         if (is_string($promptList)) $promptList = [["prompt" => $promptList, "type" => "step"]];

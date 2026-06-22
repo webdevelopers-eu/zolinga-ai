@@ -57,7 +57,7 @@ Use `$api->ai->promptAsync()` to queue a request for background processing. The 
 
 | Key | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `ai` | string | yes | `default` | Backend name from `config.ai.backends.*` |
+| `capabilities` | string | yes | `default` | Required capability or array of capabilities. The best-matching backend is selected automatically. |
 | `prompt` | string or array | yes | `[]` | A plain prompt string, or an array of pipeline steps (see below) |
 | `format` | array or null | no | `null` | JSON Schema for structured output, or `null` for plain text |
 | `options` | array | no | `[]` | Default backend options applied to every step and QC check in the request before any step-level overrides |

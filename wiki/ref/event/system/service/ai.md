@@ -74,7 +74,7 @@ bin/zolinga ai:generate
 
 `$event->request` supports these keys:
 
-- `ai`: Backend name from `config.ai.backends.*`.
+- `capabilities`: Required capability or array of capabilities. The best-matching backend is selected automatically.
 - `prompt`: A plain prompt string, or a pipeline array.
 - `format`: JSON schema array for structured output, or `null` for plain text.
 - `options`: Optional backend options applied to every prompt in the request before any step-level overrides are applied.

@@ -15,7 +15,7 @@ use Zolinga\System\Types\OriginEnum;
  * After processing, the event is dispatched so your listener receives the result.
  *
  * Request keys:
- * - 'ai' (string, required): Backend name as defined in config `ai.backends.*`. Default: "default".
+ * - 'capabilities' (string, required): Required capability or array of capabilities. The best-matching backend is selected automatically. Default: "default".
  * - 'prompt' (string|array, required): Either a plain prompt string or an array of pipeline steps.
  *    Each step: ['prompt' => string, 'type' => 'step'|'qc']. See <ai-text> pipeline docs.
  * - 'format' (array|null): JSON Schema for structured output, or null for plain text. Default: null.
@@ -36,7 +36,7 @@ use Zolinga\System\Types\OriginEnum;
  *     "my:callback:event",
  *     OriginEnum::INTERNAL,
  *     [
- *         'ai' => 'default',
+ *         'capabilities' => 'default',
  *         'prompt' => 'Write about Zolinga.',
  *     ],
  *     [
@@ -60,7 +60,7 @@ class AiEvent extends RequestResponseEvent {
     }
 
     private const REQUEST_DEFAULTS = [
-        'ai' => 'default',
+        'capabilities' => 'default',
         'prompt' => [],
         'format' => null,
         'priority' => 0.5,
@@ -68,7 +68,7 @@ class AiEvent extends RequestResponseEvent {
     ];
 
     private const REQUEST_REQUIRED = [
-        'ai',
+        'capabilities',
         'prompt',
     ];
 
@@ -78,7 +78,7 @@ class AiEvent extends RequestResponseEvent {
      * @param string $uuid Unique identifier for deduplication. Duplicate UUIDs are silently ignored by promptAsync().
      * @param string $type The type of the event.
      * @param OriginEnum $origin The origin of the event, defaults to OriginEnum::INTERNAL.
-     * @param ArrayAccess|array $request The request data, defaults to a new ArrayObject. Required keys: ai, prompt.
+     * @param ArrayAccess|array $request The request data, defaults to a new ArrayObject. Required keys: capabilities, prompt.
      * @param ArrayAccess|array $response The response data, defaults to a new ArrayObject.
      */
     public function __construct(
@@ -89,6 +89,12 @@ class AiEvent extends RequestResponseEvent {
         ArrayAccess|array $response = new ArrayObject,
     ) {
         global $api;
+
+        // compatibility fix after renaming 'ai' to 'capabilities' in the request
+        // @todo Eventually we should remove support for 'ai' in the request and clean up old queued events that still use it.
+        if (isset($request['ai']) && !isset($request['capabilities'])) {
+            $request['capabilities'] = $request['ai'];
+        }
 
         $request = array_merge(self::REQUEST_DEFAULTS, (array) $request);
         $this->validateRequest($request);

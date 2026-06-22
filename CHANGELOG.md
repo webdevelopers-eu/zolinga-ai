@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-06-22
+
+### Added
+- Optional `config://zolinga-ai/instructions.json` — an array of `{capabilities, instruction}` objects selected by capability matching (same algorithm as `ai-backends.json`). Matching instruction text is appended to the system prompt automatically on every `prompt()` call.
+- The `instruction` field may be a Zolinga FS URI (e.g. `config://zolinga-ai/translate-cs.md`) pointing to a file whose contents are read at load time.
+
+### Changed
+- `AiService::prompt()` signature simplified: first parameter is now `string|array $capabilities` (the `AiBackend` instance union member was dead code — all callers pass strings).
+- `AiEvent` request key `'ai'` renamed to `'capabilities'` to accurately describe what it holds. The `<ai-text>` CMS element attributes `ai` and `ai-meta` are renamed to `capabilities` and `capabilities-meta`. **Breaking change** for queued DB events and CMS page markup.
+- `TranslateEvent` request key `'ai'` renamed to `'capabilities'` (zolinga-intl module).
+- `AiBackend` moved from `Zolinga\AI\Types` to `Zolinga\AI\Config\Backends\AiBackendConfig`. `AiBackendReplace` moved to `Zolinga\AI\Config\Backends\AiBackendReplaceConfig`.
+- Backend selection logic extracted from `AiService` into `Zolinga\AI\Config\Backends\AiBackendConfigManager`.
+- Capability matching logic extracted into shared `Zolinga\AI\Config\AiCapabilityMatcher` (used by both backend and instruction selection).
+
+### Fixed
+- `AiService::selectBackendAI()` could return null, causing a latent TypeError in `processPrompt()`. Backend selection now throws `\Exception` on no match instead of returning null.
+
 ## [1.6.0] - 2026-06-02
 
 ### Changed

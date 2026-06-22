@@ -5,8 +5,10 @@ namespace Zolinga\AI\Service;
 use DOMDocument;
 use JsonException;
 use Parsedown;
+use Zolinga\AI\Config\Backends\AiBackendConfig;
+use Zolinga\AI\Config\Backends\AiBackendConfigManager;
+use Zolinga\AI\Config\Instructions\AiInstructionConfigManager;
 use Zolinga\AI\Events\AiEvent;
-use Zolinga\AI\Types\AiBackend;
 use Zolinga\AI\Workflow\WorkflowAtom;
 use Zolinga\System\Events\ServiceInterface;
 
@@ -20,19 +22,27 @@ use Zolinga\System\Events\ServiceInterface;
 */
 class AiService implements ServiceInterface
 {
-    private array $selectionCache = []; // cache for backend selection results
+    /**
+     * Backend config manager — lazy-initialized.
+     */
+    private AiBackendConfigManager $backends {
+        get {
+            if (!isset($this->backends)) {
+                $this->backends = new AiBackendConfigManager();
+            }
+            return $this->backends;
+        }
+    }
 
     /**
-     * List of available backends
-     *
-     * @var array<AiBackend>
+     * Instruction config manager — lazy-initialized.
      */
-    private array $aiBackends {
+    private AiInstructionConfigManager $instructions {
         get {
-            if (!isset($this->aiBackends)) {
-                $this->aiBackends = $this->loadAiBackends();
+            if (!isset($this->instructions)) {
+                $this->instructions = new AiInstructionConfigManager();
             }
-            return $this->aiBackends;
+            return $this->instructions;
         }
     }
 
@@ -40,77 +50,6 @@ class AiService implements ServiceInterface
     {
     }
 
-    private function loadAiBackends(): array
-    {
-        global $api;
-
-        $aiBackends = [];
-        $config = 'config://zolinga-ai/ai-backends.json';
-
-        if (!file_exists($config)) {
-            $api->log->warning('ai', "AI backends configuration file '$config' does not exist. No AI backends will be available. Please create the file with your backend configurations. See the documentation for details.");
-            return $aiBackends;
-        }
-
-        $config = json_decode(file_get_contents($config), true) 
-            or throw new \Exception("Failed to decode AI backends configuration file '$config': " . json_last_error_msg(), 1223);
-
-        foreach ($config as $aiConfig) {
-            try {
-                $aiBackends[] = new AiBackend($aiConfig);
-            } catch (\Exception $e) {
-                $api->log->error('ai', "Failed to initialize AI backend '{$aiConfig['model']}': " . $e->getMessage());
-            }
-        }
-        return $aiBackends;
-    }
-
-    /**
-     * Resolve backend parameter to AiBackend object.
-     * 
-     * If more then one backend matches the provided capabilities, the one with the highest match score
-     * (less wildcards in capability name) is selected. If no backend matches, null is returned.
-     *
-     * @param string|array $capabilities
-     * @return AiBackend|null
-     */
-    private function selectBackendAI(string|array $capabilities): ?AiBackend
-    {
-        global $api;
-
-        $id = $this->capabilityToString($capabilities);
-        if (isset($this->selectionCache[$id])) {
-            return $this->selectionCache[$id];
-        }
-
-        $selected = null;
-        $lastScore = -1;
-        foreach($this->aiBackends as $backend) {
-            $score = $backend->hasCapabilities($capabilities);
-            if (is_int($score) && $score > $lastScore) {
-                $selected = $backend;
-                $lastScore = $score;
-            }
-        }
-
-        $this->selectionCache[$id] = $selected;
-
-        if (!$selected) {
-            $api->log->warning('ai', "📌 No AI backend matches the required capabilities: $id (specificity: $lastScore)");
-            return null;
-        }
-
-        $api->log->info('ai', "📌 Selected AI backend '$selected->name' for capabilities: $id (specificity: $lastScore)");
-        return $selected;
-    }
-
-    private function capabilityToString(string|array $capabilities): string
-    {
-        $arr = is_array($capabilities) ? $capabilities : [$capabilities];
-        sort($arr);
-        return implode(" + ", $arr);
-    }
-    
     /**
     * Sends a prompt to the AI model and handles the response in async way.
     * 
@@ -123,7 +62,7 @@ class AiService implements ServiceInterface
     *      'my-unique-id', // required — duplicate UUIDs are silently ignored
     *      "my-response-process", 
     *      request: [
-    *        'ai' => 'default',
+    *        'capabilities' => 'default',
     *        'prompt' => 'Hello, how are you?'
     *      ], 
     *      response: [
@@ -208,7 +147,7 @@ public function isPromptAsyncQueued(string $uuid): bool
 *     ]
 * );
 *
-* @param AiBackend|string|array $ai The backend to use as defined in the configuration.
+* @param string|array $capabilities The required capability or array of capabilities. The best-matching backend is selected automatically.
 * @param string $prompt The prompt to send.
 * @param array|null $format Expected output format specified as JSON schema or "json" or null. See Oolama API documentation.
 * @param array|null $options Optional request options. They are merged with the configured backend's `options` array if present. Matching keys from the backend configuration currently take precedence. E.g. "{num_ctx: 4096}". See Ollama options.
@@ -216,14 +155,15 @@ public function isPromptAsyncQueued(string $uuid): bool
 * @param bool $debug If true, enables debug logging for the generation process.
 * @return array|string The response from the AI model - if the $format is set to "json" or JSON schema, the response is decoded array, otherwise it is a string.
 */
-public function prompt(AiBackend|string|array $ai, string $prompt, ?array $format = null, ?array $options = null, int $retry = 6, bool $debug = false): array|string
+public function prompt(string|array $capabilities, string $prompt, ?array $format = null, ?array $options = null, int $retry = 6, bool $debug = false): array|string
 {
     global $api;
-    $ai = $ai instanceof AiBackend ? $ai : $this->selectBackendAI($ai);
+    $ai = $this->backends->select($capabilities);
+    $instructions = $this->instructions->getInstructions($capabilities);
 
     while ($retry-- > 0) {
         try {
-            return $this->processPrompt($ai, $prompt, $format, $options, $debug);
+            return $this->processPrompt($ai, $prompt, $format, $options, $debug, $instructions);
         } catch (\Exception $e) {
             $api->log->error("ai", "Error processing prompt ($retry attempts left): " . $e->getMessage() . "trace, " . $e->getTraceAsString());
         }
@@ -231,7 +171,7 @@ public function prompt(AiBackend|string|array $ai, string $prompt, ?array $forma
     throw new \Exception("Failed to process the prompt after multiple attempts.", 1228);
 }
 
-private function processPrompt(AiBackend $ai, string $prompt, ?array $format = null, ?array $options = null, bool $debug = false): array|string
+private function processPrompt(AiBackendConfig $ai, string $prompt, ?array $format = null, ?array $options = null, bool $debug = false, string $instructions = ''): array|string
 {
     global $api;
     
@@ -244,6 +184,11 @@ private function processPrompt(AiBackend $ai, string $prompt, ?array $format = n
         'system' => $ai->systemPrompt ?: $api->config['ai']['systemPrompt'] ?: "You are a very capable content creator.",
     ];
     
+    // Append instructions BEFORE the JSON-format suffix so the structured-output
+    // directive remains last and most prominent.
+    if ($instructions !== '') {
+        $request['system'] .= "\n\n" . $instructions;
+    }
     if ($format !== null) {
         $request['format'] = $format;
         $request['system'].= " Return only valid JSON format that exactly matches the schema. Do not add text, tabs, or comments. If you cannot comply, return an empty object.";

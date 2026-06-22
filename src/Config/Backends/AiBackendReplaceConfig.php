@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Zolinga\AI\Types;
+namespace Zolinga\AI\Config\Backends;
 
 /**
  * Represents a single regex replacement rule for AI backend response post-processing.
@@ -11,7 +11,7 @@ namespace Zolinga\AI\Types;
  * @property-read string $replace Replacement string.
  * @property-read ?string $description Optional human-readable description.
  */
-class AiBackendReplace
+class AiBackendReplaceConfig
 {
     public readonly string $search;
     public readonly string $replace;

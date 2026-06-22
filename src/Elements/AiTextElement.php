@@ -14,8 +14,8 @@ use Zolinga\System\Types\StatusEnum;
  * Processes CMS generative article content. 
  * 
  * Supports two modes:
- * 1. Simple: <ai-text ai="default">Write about X.</ai-text>
- * 2. Pipeline: <ai-text ai="default"><step>Write draft.</step><qc>- No links.</qc><step>Refine: {{input}}</step></ai-text>
+ * 1. Simple: <ai-text capabilities="default">Write about X.</ai-text>
+ * 2. Pipeline: <ai-text capabilities="default"><step>Write draft.</step><qc>- No links.</qc><step>Refine: {{input}}</step></ai-text>
  *
  * In pipeline mode, <step> and <qc> elements are processed in order.
  * Each <step> generates content (subsequent steps receive previous output via {{input}}).
@@ -24,7 +24,7 @@ use Zolinga\System\Types\StatusEnum;
  * The variable {{random|n[|charset[|separator]]}} will be replaced with a random string of length n to increase variability and avoid duplicate content.
  *
  * Attributes:
- * - ai: Optional. The AI backend to use. Default is "default".
+ * - capabilities: Optional. The AI capability tag to use. Default is "default".
  * - uuid: Required. The unique identifier of the article. An exception is thrown if omitted.
  * - remove-invalid-links: Optional. If set to "true", invalid links in the generated article will be removed.
  * - allow-generate-from: Optional. Comma-separated IP/CIDR list that may trigger generation.
@@ -47,7 +47,7 @@ class AiTextElement implements ListenerInterface
     {
         global $api;
 
-        $ai = $event->input->getAttribute("ai") ?: "default";
+        $ai = $event->input->getAttribute("capabilities") ?: "default";
         $allowedIps = $event->input->getAttribute("allow-generate-from") ?: null;
         $printOnly = $event->input->hasAttribute('print-only');
         $showMeta = preg_split('/[[:space:],]+/', $event->input->getAttribute("show-meta") ?? "") ?: [];
@@ -175,7 +175,7 @@ class AiTextElement implements ListenerInterface
             $this->displayError($event->output, "⚠️ " . dgettext("zolinga-ai", "The article was not published yet. Try again later.") . " (UUID: $uuid)");
         }
         $removeInvalidLinks = $event->input->getAttribute("remove-invalid-links") === "true";
-        $generateMetaAI = !empty($event->input->getAttribute('show-meta')) ? ($event->input->getAttribute('ai-meta') ?: 'default') : null;
+        $generateMetaAI = !empty($event->input->getAttribute('show-meta')) ? ($event->input->getAttribute('capabilities-meta') ?: 'default') : null;
         $this->generateArticle($uuid, $ai, $list, $removeInvalidLinks, $event->input->getAttribute("tag") ?: null, $generateMetaAI);
         $event->setStatus(ContentElementEvent::STATUS_OK, "The article was not published yet. Try again later.");
         header("Retry-After: 86400");
@@ -195,7 +195,7 @@ class AiTextElement implements ListenerInterface
         // Generate 
         if (!$article->title || !$article->description || !$article->tldr) {
             // Not all AI models support structured output, so we need separate attr to specify that.
-            $this->generateMeta($input->getAttribute('ai-meta') ?: 'default', $article);
+            $this->generateMeta($input->getAttribute('capabilities-meta') ?: 'default', $article);
             $output->append($output->ownerDocument->createComment("Meta data are not available at the moment. Try again later."));
             return;
         }
@@ -355,7 +355,7 @@ class AiTextElement implements ListenerInterface
             "ai:article:generated",
             OriginEnum::INTERNAL,
             [
-                'ai' => $ai,
+                'capabilities' => $ai,
                 'tag' => $tag,
                 // Make the articles maximally variable so they are not
                 // treated as duplicates by search engines.
@@ -389,7 +389,7 @@ class AiTextElement implements ListenerInterface
             "ai:meta:generated",
             OriginEnum::INTERNAL,
             [
-                'ai' => $ai, // some models may not support json format 
+                'capabilities' => $ai, // some models may not support json format 
                 'priority' => 0.55, // slightly higher to add meta to already generated articles faster
                 'options' => [
                     'temperature' => 0.9,

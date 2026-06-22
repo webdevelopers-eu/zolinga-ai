@@ -1,13 +1,13 @@
 ## Syntax
 
 ```html
-<ai-text [ai="{AI_BACKEND}"] uuid="{UUID}" [element="{ELEMENT_TYPE}"] [allow-generate-from="{IP_LIST}"] [remove-invalid-links="true"] [tag="{TAG}"] [show-meta="{META_LIST}"] [ai-meta="{AI_BACKEND}"] [other_attributes...]}>{PROMPT}</ai-text>
+<ai-text [capabilities="{CAPABILITY}"] uuid="{UUID}" [element="{ELEMENT_TYPE}"] [allow-generate-from="{IP_LIST}"] [remove-invalid-links="true"] [tag="{TAG}"] [show-meta="{META_LIST}"] [capabilities-meta="{CAPABILITY}"] [other_attributes...]}>{PROMPT}</ai-text>
 ```
 
 Example:
 
 ```html
-<ai-text ai="default" uuid="example:zolinga-platform" remove-invalid-links="true">
+<ai-text capabilities="default" uuid="example:zolinga-platform" remove-invalid-links="true">
     Write a blog post about the Zolinga platform.
 </ai-text>
 ```
@@ -15,7 +15,7 @@ Example:
 Example with prompt variation:
 
 ```html
-<ai-text ai="default" uuid="campaign:summer-2026">
+<ai-text capabilities="default" uuid="campaign:summer-2026">
     Write a landing page headline for our summer launch.
     Prefer words built from these letters: {{random|8}}
 </ai-text>
@@ -24,7 +24,7 @@ Example with prompt variation:
 Example with custom character set:
 
 ```html
-<ai-text ai="default" uuid="campaign:summer-2026-digits">
+<ai-text capabilities="default" uuid="campaign:summer-2026-digits">
     Write three short promo codes inspired by this seed: {{random|6|0123456789}}
 </ai-text>
 ```
@@ -32,7 +32,7 @@ Example with custom character set:
 Example with separator:
 
 ```html
-<ai-text ai="default" uuid="campaign:summer-2026-spaced-seed">
+<ai-text capabilities="default" uuid="campaign:summer-2026-spaced-seed">
     Write a headline inspired by this letter pattern: {{random|5||-}}
 </ai-text>
 ```
@@ -40,7 +40,7 @@ Example with separator:
 Restricted generation (only your office IP and localhost can trigger generation):
 
 ```html
-<ai-text ai="default" uuid="example:widget-desc" allow-generate-from="203.0.113.10,10.0.0.0/8">
+<ai-text capabilities="default" uuid="example:widget-desc" allow-generate-from="203.0.113.10,10.0.0.0/8">
     Write a product description for our new widget.
 </ai-text>
 ```
@@ -48,14 +48,14 @@ Restricted generation (only your office IP and localhost can trigger generation)
 With SEO metadata generation:
 
 ```html
-<ai-text ai="default" uuid="example:seo-article" show-meta="title,description,tldr" ai-meta="default">
+<ai-text capabilities="default" uuid="example:seo-article" show-meta="title,description,tldr" capabilities-meta="default">
     Write a comprehensive article about trademark monitoring best practices.
 </ai-text>
 ```
 
 ## Attributes
 
-- `ai`: The backend to use for generating the article. The backends are defined in your [configuration](:Zolinga Core:Configuration)'s key. Default: `default`.
+- `capabilities`: The backend to use for generating the article. The best-matching backend is selected automatically. Backends are defined in your [configuration](:Zolinga Core:Configuration)'s key. Default: `default`.
 - `uuid`: **(required)** The UUID of the article. If omitted, an error is thrown and the article will not be generated or rendered. AI generated content is stored in the database under the UUID. Therefore, if you want to display the same article multiple times, you should provide the same UUID.
 - `element`: The HTML element type to use for the generated content. Default: `article`.
 - `allow-generate-from`: A comma-separated list of IP addresses or CIDR ranges that are allowed to **trigger** AI content generation. Requests from IPs not on the list will receive a 404 response instead of queuing a generation job. Already-generated content is served to everyone regardless of this attribute. If the attribute is omitted, any visitor can trigger generation. Uses `$api->network->matchCidr()` for matching, so both IPv4 and IPv6 are supported. Example: `"109.164.101.75,10.0.0.0/8,2001:db8::/32"`.
@@ -66,7 +66,7 @@ With SEO metadata generation:
   - `title` — injected as `<meta name="title" content="..." append-to="xpath://head"/>`
   - `description` — injected as `<meta name="description" content="..." append-to="xpath://head"/>`
   - `tldr` — rendered as a `<details class="text-tldr" open="open">` element with a `<summary>` and the summary text inside a `<p itemprop="abstract">`.
-- `ai-meta`: The AI backend to use for metadata generation. Optional. Defaults to the same backend as `ai` or `default`. Only used when `show-meta` is set and metadata needs to be generated. Some backends may not support structured JSON output, so you can specify a different backend here.
+- `capabilities-meta`: The capability to use for metadata generation. Optional. Defaults to the same capability as `capabilities` or `default`. Only used when `show-meta` is set and metadata needs to be generated. Some backends may not support structured JSON output, so you can specify a different backend here.
 - Output attributes copied from `<ai-text>`: Only `class`, `style`, `id`, and any `data-*` attributes are copied to the rendered output element.
 
 ## Regeneration
@@ -82,7 +82,7 @@ The `<ai-text>` element can contain nested CMS content elements. Before the prom
 This allows you to dynamically construct prompts using other content elements:
 
 ```html
-<ai-text ai="default" uuid="example:summary">
+<ai-text capabilities="default" uuid="example:summary">
     Write a summary for this post: <autoblog-post data-field="title" />
     Context: <my-data-element />
 </ai-text>
@@ -93,7 +93,7 @@ Tip: this also works inside `<step>` blocks in a multi-step pipeline. A useful p
 Example using `<random-chooser>` to optionally include one instruction line:
 
 ```html
-<ai-text ai="vyhledavani" uuid="vyhledavani:{{GET:search|Your Brand}}">
+<ai-text capabilities="vyhledavani" uuid="vyhledavani:{{GET:search|Your Brand}}">
     <step>
         STRUCTURE:
         - # heading containing "{{GET:search|Your Brand}}".
@@ -109,7 +109,7 @@ Example using `<random-chooser>` to optionally include one instruction line:
 Example using `<random-chooser>` to shuffle plain text values and join them with a separator:
 
 ```html
-<ai-text ai="default" uuid="demo:random-chooser-seed">
+<ai-text capabilities="default" uuid="demo:random-chooser-seed">
     <step>
         Prefer title words inspired by these numbers:
         <random-chooser count="3" text-separator=", " selector="./*/text()">
@@ -149,7 +149,7 @@ Use it when you want the prompt to vary between generations, for example to enco
 Example:
 
 ```html
-<ai-text ai="default" uuid="blog:trademark-monitoring">
+<ai-text capabilities="default" uuid="blog:trademark-monitoring">
     <step>
         Write a long-form article about trademark monitoring.
         Use these random letters as a title constraint: {{random|10}}
@@ -160,7 +160,7 @@ Example:
 Example with a restricted alphabet:
 
 ```html
-<ai-text ai="default" uuid="blog:coupon-seeds">
+<ai-text capabilities="default" uuid="blog:coupon-seeds">
     <step>
         Generate a coupon seed using only A, B, C, 1, 2, and 3: {{random|12|ABC123}}
     </step>
@@ -170,7 +170,7 @@ Example with a restricted alphabet:
 Example with separator:
 
 ```html
-<ai-text ai="default" uuid="blog:spaced-initials">
+<ai-text capabilities="default" uuid="blog:spaced-initials">
     <step>
         Generate a mnemonic seed with dash-separated letters: {{random|5||-}}
     </step>
@@ -203,7 +203,7 @@ The placeholder content is wrapped in an `<article class="zolinga-text placehold
 Example:
 
 ```html
-<ai-text ai="default" uuid="blog:trademark-monitoring-eu" remove-invalid-links="true">
+<ai-text capabilities="default" uuid="blog:trademark-monitoring-eu" remove-invalid-links="true">
     <placeholder>
         <p>We are preparing a comprehensive article on trademark monitoring in the EU.</p>
         <div class="skeleton-loader"></div>
@@ -228,7 +228,7 @@ Example:
 ### Example
 
 ```html
-<ai-text ai="default" uuid="blog:trademark-monitoring-eu" remove-invalid-links="true">
+<ai-text capabilities="default" uuid="blog:trademark-monitoring-eu" remove-invalid-links="true">
     <step>
         Write a 500-word blog post about trademark monitoring in the EU.
     </step>

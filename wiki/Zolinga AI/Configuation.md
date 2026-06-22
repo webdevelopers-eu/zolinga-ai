@@ -180,18 +180,19 @@ The first backend serves anything in the `default` / `search:*` / `article-*` / 
 
 ## Programmatic Backend Access
 
-You can also build an `AiBackend` directly and pass it to the service:
+You can build an `AiBackendConfig` directly for testing or dynamic discovery:
 
 ```php
-use Zolinga\AI\Types\AiBackend;
+use Zolinga\AI\Config\Backends\AiBackendConfig;
 
-$backend = new AiBackend([
+$backend = new AiBackendConfig([
     'url' => 'https://user:pass@ai.example.com/api',
     'model' => 'gemma3:27b',
     'capabilities' => ['default'],
 ]);
 
-$api->ai->prompt($backend, 'Hello.');
+// $backend->hasCapabilities('default') => int (specificity score)
+// $backend->url, $backend->model, $backend->replaceText(...), etc.
 ```
 
 This is useful in tests or when the backend is discovered dynamically.

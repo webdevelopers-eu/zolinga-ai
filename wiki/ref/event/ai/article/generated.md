@@ -14,7 +14,7 @@ Internal event fired when an AI-generated article is ready to be saved. The hand
 
 | Property | Type | Description |
 |---|---|---|
-| `ai` | `string` | AI backend name |
+| `capabilities` | `string` | Required capability or array of capabilities |
 | `prompt` | `string\|array` | The prompt or pipeline steps used for generation |
 | `tag` | `string\|null` | Optional tag for categorization or versioning |
 | `options` | `array` | AI generation options (temperature, penalties, etc.) |
