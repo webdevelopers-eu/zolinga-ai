@@ -7,8 +7,7 @@ namespace Zolinga\AI\Model;
  * 
  * Usage:
  * 
- * $article = AiTextModel::getTextModel($uuid) ?? AiTextModel::createTextModel($uuid, $contents);
- * $article->contents = "<h1>My new article</h1>";
+ * $article = AiTextModel::getTextModel($uuid) ?? AiTextModel::createTextModel($uuid, $markdown, $triggerURL, $tag);
  * $article->save();
  * 
  * @author Daniel Sevcik <sevcik@webdevelopers.eu>
@@ -90,14 +89,33 @@ class AiTextModel implements \Stringable
         $this->updated = strtotime($rowData['updated']);
         // $contents = preg_replace('/<think>.*?<\/think>/', '', $this->contents);
     }
-
-    /**
-     * Sets the article contents after converting it to HTML.
+/**
+     * Sets the article contents after converting Markdown to HTML.
      * 
-     * @param string $contents The article contents.
+     * Delegates to {@see markdownToHtml()} for conversion, then stores the result as $this->contents.
+     * 
+     * @param string $contents Markdown content.
+     * @param bool $removeInvalidLinks If true, invalid or duplicate links are stripped.
      * @return void
      */
     public function setContentsMarkdown(string $contents, bool $removeInvalidLinks = false): void {
+        $doc = self::markdownToHtml($contents, $removeInvalidLinks);
+        $contents = $doc->saveXML();  
+        $this->contents = $contents;
+    }
+
+    /**
+     * Convert Markdown to a DOMDocument with an <article> root element.
+     * 
+     * Strips think tags, converts Markdown to HTML via Parsedown, wraps in an article element,
+     * and optionally removes invalid/duplicate links.
+     * 
+     * @throws \Exception If the converted HTML does not contain an article element.
+     * @param string $contents Markdown content.
+     * @param bool $removeInvalidLinks If true, invalid or duplicate links are stripped.
+     * @return \DOMDocument The DOMDocument with an article root element.
+     */
+    static public function markdownToHtml(string $contents, bool $removeInvalidLinks = false): \DOMDocument {
         global $api;
 
         $contents = trim(preg_replace('/<think>.*?<\/think>/s', '', $contents));
@@ -105,8 +123,10 @@ class AiTextModel implements \Stringable
         // if ($format === ResponseTextFormat::MARKDOWN) { -- for now we support only MARKDOWN
         $doc = $api->ai->convertMarkdownToDOM($contents);
         $articleElement = $doc->getElementsByTagName('article')->item(0);
+        if ($articleElement === null) {
+            throw new \Exception("Failed to parse " . self::class . " content as XML: no <article> element found.\n\nArticle content: " . mb_substr($contents, 0, 200), 1227);
+        }
         $articleElement->setAttribute('class', 'zolinga-text');
-        $articleElement->setAttribute('data-text-id', $this->id);
 
         if ($removeInvalidLinks) {
             $xpath = new \DOMXPath($doc);
@@ -128,8 +148,7 @@ class AiTextModel implements \Stringable
             }
         }
 
-        $contents = $doc->saveXML();  
-        $this->contents = $contents;
+        return $doc;
     }
 
     /**
@@ -151,14 +170,19 @@ class AiTextModel implements \Stringable
      * Creates a new AI article.
      *
      * @param string $uuid The UUID of the article.
-     * @param string $contents The contents of the article.
+     * @param string $markdown Markdown content of the article. Converted to HTML before insertion.
      * @param string|null $triggerURL The trigger URL of the article.
      * @param string|null $tag An optional tag to associate with the article. Can be used for categorization or later retrieval. Will be stored in DB column 'tag'.
+     * @param string|null $title Optional title.
+     * @param string|null $description Optional description.
+     * @param string|null $tldr Optional TL;DR summary.
      * @return AiTextModel The created article.
      */
-    static public function createTextModel(string $uuid, string $contents, ?string $triggerURL, ?string $tag = null, ?string $title = null, ?string $description = null, ?string $tldr = null): AiTextModel
+    static public function createTextModel(string $uuid, string $markdown, ?string $triggerURL, ?string $tag = null, ?string $title = null, ?string $description = null, ?string $tldr = null): AiTextModel
     {
         global $api;
+
+        $contents = self::markdownToHtml($markdown)->saveXML();
 
         $id = $api->db->query("
             INSERT INTO aiTexts (uuid, uuidHash, contents, title, description, tldr, triggerURL, tag, updated) 

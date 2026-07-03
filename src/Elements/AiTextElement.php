@@ -444,10 +444,20 @@ class AiTextElement implements ListenerInterface
         $removeInvalidLinks = $event->response['removeInvalidLinks'] ?? false;
         $generateMetaAI = $event->response['generateMetaAI'] ?? null;
 
-        $article = AiTextModel::getTextModel($uuid) ?: AiTextModel::createTextModel($uuid, $contents, $triggerURL, $tag);
-        $article->setContentsMarkdown($contents, $removeInvalidLinks); // this setter converts Markdown to HTML
-
-        $article->save();
+        try {
+            $article = AiTextModel::getTextModel($uuid);
+            
+            if ($article) { // already exists, regenerate it
+                $article->setContentsMarkdown($contents, $removeInvalidLinks);
+                $article->save();
+            } else {
+                $article = AiTextModel::createTextModel($uuid, $contents, $triggerURL, $tag);
+            }
+        } catch (\Exception $e) {
+            $api->log->error("ai", "Failed to save article $uuid: " . $e->getMessage() . "\nContents: " . $contents);
+            $event->setStatus(AiEvent::STATUS_ERROR, "Failed to save article $uuid: " . $e->getMessage());
+            return;
+        }
 
         if ($generateMetaAI) { // generate meta right away - we know they are requested
             $api->log->info("ai", "Triggering meta generation for article $uuid");

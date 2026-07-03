@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `AiTextModel::createTextModel()` now accepts **Markdown** (not HTML) as its `$contents` parameter. The Markdown is converted to HTML via `AiTextModel::markdownToHtml()` before being inserted into the database. This prevents raw Markdown from persisting in the `aiTexts.contents` column if the conversion fails.
+- New static method `AiTextModel::markdownToHtml()` — converts Markdown to a `DOMDocument` with an `<article>` root element. Extracted from `setContentsMarkdown()` for reuse.
+- `AiTextElement::onGenerateArticle()` no longer calls `save()` after `createTextModel()` — the INSERT already stores converted HTML. `save()` is only called on the regeneration path (`setContentsMarkdown()`).
+
+### Fixed
+- Raw Markdown could end up in the `aiTexts.contents` database column when `setContentsMarkdown()` threw an exception after `createTextModel()` had already inserted the unconverted content. Now `createTextModel()` converts Markdown to HTML *before* the INSERT, so a conversion failure prevents the row from being created at all.
+
 ## [1.7.0] - 2026-06-22
 
 ### Added
