@@ -252,7 +252,11 @@ class AiTextElement implements ListenerInterface
 
         $doc = new \DOMDocument();
         if (!@$doc->loadXML($article->contents)) {
-            $api->log->error("ai", "Failed to parse article content as XML: " . libxml_get_last_error()->message);
+            $api->log->error(
+                "ai", 
+                "Failed to parse $article content as XML: " . libxml_get_last_error()->message . "\n" .
+                "Article content: " . substr($article->contents, 0, 200) . "..."
+            );
         }
         $body = $doc->getElementsByTagName('article')->item(0);
 

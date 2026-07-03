@@ -14,7 +14,7 @@ namespace Zolinga\AI\Model;
  * @author Daniel Sevcik <sevcik@webdevelopers.eu>
  * @date 2025-02-07
  */
-class AiTextModel
+class AiTextModel implements \Stringable
 {
     /**
      * The DB ID of the article.
