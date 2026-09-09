@@ -93,10 +93,10 @@ Tip: this also works inside `<step>` blocks in a multi-step pipeline. A useful p
 Example using `<random-chooser>` to optionally include one instruction line:
 
 ```html
-<ai-text capabilities="vyhledavani" uuid="vyhledavani:{{GET:search|Your Brand}}">
+<ai-text capabilities="my-capability" uuid="my-prefix:{{GET:search|Default}}">
     <step>
         STRUCTURE:
-        - # heading containing "{{GET:search|Your Brand}}".
+        - # heading containing "{{GET:search|Default}}".
         - The title must be at least 60 characters long.
         <random-chooser count="1">
             <span>- Provocative questions implying fear and concern are encouraged in the title. Not required though.</span>

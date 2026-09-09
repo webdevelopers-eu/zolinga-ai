@@ -151,8 +151,7 @@ A production-shaped configuration with two backends, one for general content wor
             "article-anonymize",
             "article-title",
             "article-marketing",
-            "article-judge",
-            "vyhledavani"
+            "article-judge"
         ],
         "think": false,
         "replace": [
@@ -176,7 +175,7 @@ A production-shaped configuration with two backends, one for general content wor
 ]
 ```
 
-The first backend serves anything in the `default` / `search:*` / `article-*` / `vyhledavani` / `workflow` family and gets post-processed to clean up model quirks. The second backend is dedicated to translation jobs (matched by capabilities like `translate:en-cs` or `translate:*`) and is allowed up to 4 concurrent in-flight requests.
+The first backend serves anything in the `default` / `search:*` / `article-*` / `workflow` family and gets post-processed to clean up model quirks. The second backend is dedicated to translation jobs (matched by capabilities like `translate:en-cs` or `translate:*`) and is allowed up to 4 concurrent in-flight requests.
 
 ## Programmatic Backend Access
 

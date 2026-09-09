@@ -15,7 +15,7 @@ Fired after a new AI text is created and inserted into the `aiTexts` database ta
 | Field        | Type          | Description                                                        |
 |--------------|---------------|--------------------------------------------------------------------|
 | `id`         | `int`         | Database ID of the newly created `aiTexts` row.                    |
-| `uuid`       | `string`      | UUID identifying the text (e.g. `vyhledavani:my-trademark`).       |
+| `uuid`       | `string`      | UUID identifying the text (e.g. `my-prefix:my-content`).          |
 | `tag`        | `string|null` | Optional tag for categorization or versioning.                     |
 | `triggerURL` | `string|null` | URL that triggered the text generation, if applicable.             |
 
