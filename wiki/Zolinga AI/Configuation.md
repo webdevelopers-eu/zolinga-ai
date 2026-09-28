@@ -16,7 +16,7 @@ Create `config/zolinga-ai/ai-backends.json` with a JSON array of backend objects
         "type": "ollama",
         "url": "https://login:password@ollama.example.com/api",
         "model": "gemma3:27b",
-        "capabilities": ["default", "search:*", "translate:en-*"],
+        "capabilities": ["default", "search:*", "translate:en/*"],
         "think": false,
         "replace": [
             {"search": "/^.*?<\\/think>\\s*/su", "replace": ""}
@@ -30,16 +30,16 @@ Call it from PHP by capability (a string or array of required capabilities). The
 ```php
 $api->ai->prompt('default', 'Hello, who are you?');
 $api->ai->prompt(['search:images', 'workflow'], 'Find images of a blue labrador.');
-$api->ai->prompt(['translate:en-cs'], 'Translate this to Czech.');
+$api->ai->prompt(['translate:en/cs'], 'Translate this to Czech.');
 ```
 
 ## Capability Matching
 
-Capabilities are short strings (e.g. `default`, `workflow`, `search:images`, `translate:en-cs`). A backend declares an array of capabilities it can serve. A caller asks for one or more capabilities. A backend matches if **every** requested capability matches at least one of the backend's capabilities. Matching uses PHP's `fnmatch`, so `*` and `?` are wildcards.
+Capabilities are short strings (e.g. `default`, `workflow`, `search:images`, `translate:en/cs`). A backend declares an array of capabilities it can serve. A caller asks for one or more capabilities. A backend matches if **every** requested capability matches at least one of the backend's capabilities. Matching uses PHP's `fnmatch`, so `*` and `?` are wildcards.
 
 Scoring: the matcher prefers **more specific** backends (fewer wildcards in the matched capability pair) and returns the backend with the highest score. A backend that matches with all wildcards is returned immediately on the first hit; otherwise the best score wins.
 
-Examples (with the `gemma3:27b` backend above having `["default", "search:*", "translate:en-*"]`):
+Examples (with the `gemma3:27b` backend above having `["default", "search:*", "translate:en/*"]`):
 
 | Caller asks for                          | Matches? | Reason                                                |
 | ---------------------------------------- | -------- | ----------------------------------------------------- |
@@ -47,7 +47,7 @@ Examples (with the `gemma3:27b` backend above having `["default", "search:*", "t
 | `['default', 'search:images']`           | yes      | both covered                                          |
 | `['default', 'search:*']`                | yes      | wildcard on caller side                               |
 | `['search:images', 'voice']`             | no       | `voice` is not declared on the backend                |
-| `'translate:en-cs'`                      | yes      | matches `translate:en-*`                              |
+| `'translate:en/cs'`                      | yes      | matches `translate:en/*`                              |
 | `'workflow'`                             | no       | not declared on this backend                          |
 
 You can run several backends behind different capability sets. The first one whose capabilities cover your request wins:
@@ -70,7 +70,7 @@ You can run several backends behind different capability sets. The first one who
 ]
 ```
 
-`$api->ai->prompt('default', ...)` picks the gemma3 backend. `$api->ai->prompt(['translate:en-cs', 'oxford-dictionary'], ...)` matches a backend whose `capabilities` cover both — for example one that declares `["translate:en-*"]` (or `["translate:en-cs"]` specifically, which would score higher).
+`$api->ai->prompt('default', ...)` picks the gemma3 backend. `$api->ai->prompt(['translate:en/cs', 'oxford-dictionary'], ...)` matches a backend whose `capabilities` cover both — for example one that declares `["translate:en/*"]` (or `["translate:en/cs"]` specifically, which would score higher).
 
 > **Tip:** A capability of `"*"` matches anything. Use it sparingly, and prefer a more specific tag like `default` so the matcher still has meaningful scoring.
 
@@ -175,7 +175,7 @@ A production-shaped configuration with two backends, one for general content wor
 ]
 ```
 
-The first backend serves anything in the `default` / `search:*` / `article-*` / `workflow` family and gets post-processed to clean up model quirks. The second backend is dedicated to translation jobs (matched by capabilities like `translate:en-cs` or `translate:*`) and is allowed up to 4 concurrent in-flight requests.
+The first backend serves anything in the `default` / `search:*` / `article-*` / `workflow` family and gets post-processed to clean up model quirks. The second backend is dedicated to translation jobs (matched by capabilities like `translate:en/cs` or `translate:*`) and is allowed up to 4 concurrent in-flight requests.
 
 ## Programmatic Backend Access
 

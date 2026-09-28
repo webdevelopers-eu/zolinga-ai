@@ -4,7 +4,7 @@ Inject custom instructions into the AI system prompt based on capability matchin
 
 ## What This Does
 
-When `prompt()` is called with a capability (e.g. `"translate:*-cs"`, `"article-title"`, `"workflow"`), the system automatically appends any matching instruction text to the system prompt. This lets you customize AI behavior per capability without modifying code.
+When `prompt()` is called with a capability (e.g. `"translate:*/cs"`, `"article-title"`, `"workflow"`), the system automatically appends any matching instruction text to the system prompt. This lets you customize AI behavior per capability without modifying code.
 
 ## Configuration
 
@@ -13,7 +13,7 @@ Create `config/zolinga-ai/instructions.json`:
 ```json
 [
     {
-        "capabilities": ["translate:*-cs"],
+        "capabilities": ["translate:*/cs"],
         "instruction": "Always use formal Czech address forms."
     },
     {
@@ -38,7 +38,7 @@ Instead of inline text, the `instruction` field can point to a file using a Zoli
 
 ```json
 {
-    "capabilities": ["translate:*-cs"],
+    "capabilities": ["translate:*/cs"],
     "instruction": "config://zolinga-ai/translate-cs.md"
 }
 ```
@@ -77,7 +77,7 @@ Instructions are appended to the **system prompt** (not the user prompt). When s
 ```json
 [
     {
-        "capabilities": ["translate:*-cs"],
+        "capabilities": ["translate:*/cs"],
         "instruction": "private://zolinga-ai/instructions/translate-cs.txt"
     }
 ]

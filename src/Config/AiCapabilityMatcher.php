@@ -13,7 +13,7 @@ namespace Zolinga\AI\Config;
  * A higher specificity score means more non-wildcard characters matched.
  *
  * Example:
- *   AiCapabilityMatcher::match(['translate:en-cs', 'search:images'], ['default', 'search:*', 'translate:en-*']) => int
+ *   AiCapabilityMatcher::match(['translate:en/cs', 'search:images'], ['default', 'search:*', 'translate:en/*']) => int
  *   AiCapabilityMatcher::match(['default', 'voice'], ['default', 'search:*']) => false (missing 'voice')
  *
  * @author Daniel Sevcik <sevcik@webdevelopers.eu>
